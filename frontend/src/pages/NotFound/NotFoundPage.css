@@ -1,0 +1,232 @@
+/* ================================================================
+   ANNPURNA — 404 "Recipe Not Found" page
+   Warm, playful, on-brand animated fallback for broken/unknown routes.
+   ================================================================ */
+
+.notfound-page {
+  position: relative;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: clamp(48px, 8vw, 90px) 20px;
+  background: radial-gradient(circle at 50% 20%, #FFF3E9 0%, #FFF8F4 55%, #FFF8F4 100%);
+}
+
+/* ── Floating spice particles background ── */
+.notfound-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.notfound-particle {
+  position: absolute;
+  bottom: -40px;
+  border-radius: 50%;
+  opacity: 0.55;
+  animation: notfound-float 9s ease-in-out infinite;
+}
+
+@keyframes notfound-float {
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0;
+  }
+  10% { opacity: 0.55; }
+  50% {
+    transform: translateY(-52vh) translateX(14px) scale(1.15);
+  }
+  90% { opacity: 0.35; }
+  100% {
+    transform: translateY(-100vh) translateX(-10px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+/* ── Card ── */
+.notfound-card {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+
+/* ── "4  4" with animated pot as the middle "0" ── */
+.notfound-digits {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1.5vw, 14px);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.notfound-digit {
+  font-family: var(--font-heading, 'Literata', Georgia, serif);
+  font-weight: 600;
+  font-size: clamp(72px, 18vw, 140px);
+  color: var(--color-primary, #B22222);
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+.notfound-pot-wrap {
+  position: relative;
+  width: clamp(72px, 18vw, 140px);
+  height: clamp(72px, 18vw, 140px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notfound-pot {
+  width: 62%;
+  height: 62%;
+  color: var(--color-primary, #B22222);
+  animation: notfound-wobble 3.2s ease-in-out infinite;
+  transform-origin: 50% 85%;
+}
+
+@keyframes notfound-wobble {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(7deg); }
+}
+
+/* Steam wisps rising from the pot */
+.notfound-steam {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(to top, rgba(178, 34, 34, 0.35), rgba(178, 34, 34, 0));
+  animation: notfound-steam-rise 2.6s ease-in-out infinite;
+}
+
+.notfound-steam-1 {
+  height: 22px;
+  animation-delay: 0s;
+  --steam-x: -14px;
+}
+.notfound-steam-2 {
+  height: 28px;
+  animation-delay: 0.5s;
+  --steam-x: 0px;
+}
+.notfound-steam-3 {
+  height: 20px;
+  animation-delay: 1s;
+  --steam-x: 13px;
+}
+
+@keyframes notfound-steam-rise {
+  0% { opacity: 0; transform: translate(var(--steam-x, 0), 6px) scaleY(0.7); }
+  30% { opacity: 0.8; }
+  100% { opacity: 0; transform: translate(var(--steam-x, 0), -26px) scaleY(1.15); }
+}
+
+/* ── Copy ── */
+.notfound-eyebrow {
+  font-family: var(--font-body, 'Be Vietnam Pro', sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-tertiary, #2F8B57);
+  margin-bottom: 14px;
+}
+
+.notfound-title {
+  font-family: var(--font-heading, 'Literata', Georgia, serif);
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 600;
+  color: var(--text-heading, #1C1007);
+  margin-bottom: 12px;
+  line-height: 1.25;
+}
+
+.notfound-subtitle {
+  font-family: var(--font-body, 'Be Vietnam Pro', sans-serif);
+  font-size: clamp(14.5px, 2vw, 16px);
+  color: var(--text-muted, #7A5C4A);
+  max-width: 440px;
+  margin: 0 auto 34px;
+  line-height: 1.65;
+}
+
+/* ── Actions ── */
+.notfound-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 30px;
+}
+
+.notfound-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 26px;
+  border-radius: var(--radius-lg, 18px);
+  font-family: var(--font-body, 'Be Vietnam Pro', sans-serif);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: var(--transition-smooth, all 0.28s cubic-bezier(0.4, 0, 0.2, 1));
+  border: 1.5px solid transparent;
+}
+
+.notfound-btn-primary {
+  background: var(--color-primary, #B22222);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-md, 0 4px 16px rgba(93, 64, 55, 0.10));
+}
+
+.notfound-btn-primary:hover {
+  background: var(--color-primary-dark, #8B1A1A);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg, 0 10px 32px rgba(93, 64, 55, 0.12));
+}
+
+.notfound-btn-outline {
+  background: transparent;
+  color: var(--color-primary, #B22222);
+  border-color: var(--border-warm, rgba(178, 34, 34, 0.15));
+}
+
+.notfound-btn-outline:hover {
+  background: var(--color-primary-light, rgba(178, 34, 34, 0.08));
+  transform: translateY(-2px);
+}
+
+.notfound-hint {
+  font-family: var(--font-body, 'Be Vietnam Pro', sans-serif);
+  font-size: 13px;
+  color: var(--text-light, #A8816A);
+}
+
+.notfound-hint code {
+  background: var(--bg-surface-2, #FEF4EC);
+  border: 1px solid var(--border-color, rgba(93, 64, 55, 0.12));
+  border-radius: var(--radius-xs, 4px);
+  padding: 2px 7px;
+  font-size: 12.5px;
+  color: var(--text-muted, #7A5C4A);
+}
+
+@media (max-width: 480px) {
+  .notfound-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .notfound-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

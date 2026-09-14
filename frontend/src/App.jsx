@@ -23,6 +23,7 @@ import AboutPage from './pages/About/AboutPage';
 import PrivacyPolicyPage from './pages/Legal/PrivacyPolicyPage';
 import TermsPage from './pages/Legal/TermsPage';
 import CartPage from './pages/Cart/CartPage';
+import NotFoundPage from './pages/NotFound/NotFoundPage';
 import ProductDetailModal from './components/product/ProductDetailModal';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
@@ -217,6 +218,9 @@ export function App() {
           <Route path="/account/addresses" element={<ProtectedRoute><SavedAddresses /></ProtectedRoute>} />
           <Route path="/account/payment-methods" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
           <Route path="/account/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
+
+          {/* ── Catch-all: unmatched/broken routes → animated 404 ── */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
 
         {/* ProductDetailModal preserved for future use */}
