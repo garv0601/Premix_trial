@@ -7,7 +7,7 @@ import CouponFilters from '../../components/coupons/CouponFilters';
 import CouponTable from '../../components/coupons/CouponTable';
 import AddCouponModal from '../../components/coupons/AddCouponModal';
 import EditCouponModal from '../../components/coupons/EditCouponModal';
-import '../customers/Customers.css'; // Reusing the exact same layout CSS
+import '../Customers/Customers.css'; // Reusing the exact same layout CSS
 
 export default function Coupons() {
   const {
