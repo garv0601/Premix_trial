@@ -7,8 +7,7 @@
  */
 
 import supabase from '../lib/supabase';
-
-const API_BASE = '/api';
+import { BASE_URL as API_BASE } from './api';
 
 async function getAuthToken() {
   if (!supabase) return null;

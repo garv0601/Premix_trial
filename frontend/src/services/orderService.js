@@ -9,8 +9,7 @@
  */
 
 import supabase from '../lib/supabase';
-
-const API_BASE = '/api';
+import { BASE_URL as API_BASE } from './api';
 
 /**
  * Get the current session's JWT to authenticate backend requests.
