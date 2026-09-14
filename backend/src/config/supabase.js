@@ -40,6 +40,11 @@ export async function verifyUser(jwt) {
   if (!supabaseAdmin) throw new Error('Supabase backend client not initialised');
   const { data, error } = await supabaseAdmin.auth.getUser(jwt);
   if (error || !data?.user) {
+    // Log the real Supabase error server-side only (never sent to the client)
+    // so a rejected token — expired vs. malformed vs. issued by a different
+    // Supabase project than this backend's SUPABASE_URL/SERVICE_ROLE_KEY —
+    // is diagnosable from server logs instead of a single generic message.
+    console.error('[verifyUser] Token rejected by Supabase:', error?.message || 'no user returned for token');
     throw new Error('Invalid or expired authentication token');
   }
   return data.user;
