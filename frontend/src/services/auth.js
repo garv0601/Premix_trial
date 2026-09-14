@@ -6,6 +6,31 @@
 
 import supabase, { credentialsMissing } from '../lib/supabase';
 
+/**
+ * Resolve the base site URL used for auth redirects.
+ *
+ * - By default it uses `window.location.origin`, so it automatically points to
+ *   `http://localhost:3000` during local development and to the real deployed
+ *   origin (e.g. `https://premix-trial-1.onrender.com`) in production.
+ * - It can be explicitly overridden with `VITE_SITE_URL` if a canonical domain
+ *   must be forced (e.g. behind a proxy/CDN). Leave it unset to rely on origin.
+ */
+export const getSiteUrl = () => {
+  const configured = import.meta.env.VITE_SITE_URL?.trim();
+  const base = configured || (typeof window !== 'undefined' ? window.location.origin : '');
+  return base.replace(/\/+$/, '');
+};
+
+/**
+ * Build an absolute redirect URL for auth flows from a relative path.
+ * Centralises redirect construction so login/signup/reset stay consistent
+ * and environment-aware.
+ */
+export const buildAuthRedirectUrl = (path = '/') => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${getSiteUrl()}${normalizedPath}`;
+};
+
 const notConfigured = () => ({
   data: null,
   error: {
@@ -83,7 +108,7 @@ export const signIn = async (email, password) => {
 export const resetPasswordForEmail = async (email, redirectTo) => {
   if (credentialsMissing) return notConfigured();
   return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: redirectTo || `${window.location.origin}/reset-password`,
+    redirectTo: redirectTo || buildAuthRedirectUrl('/reset-password'),
   });
 };
 
@@ -94,12 +119,12 @@ export const signOut = async () => {
 
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
-export const signInWithGoogle = async (redirectTo = window.location.origin) => {
+export const signInWithGoogle = async (redirectTo = buildAuthRedirectUrl('/')) => {
   if (credentialsMissing) return notConfigured();
   return await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
 };
 
-export const signInWithFacebook = async (redirectTo = window.location.origin) => {
+export const signInWithFacebook = async (redirectTo = buildAuthRedirectUrl('/')) => {
   if (credentialsMissing) return notConfigured();
   return await supabase.auth.signInWithOAuth({ provider: 'facebook', options: { redirectTo } });
 };

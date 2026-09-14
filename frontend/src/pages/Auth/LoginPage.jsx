@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Mail, Phone, Loader2, AlertCircle, KeyRound, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import AuthLayout from '../../components/auth/AuthLayout';
 import { useAuth } from '../../hooks/useAuth';
+import { buildAuthRedirectUrl } from '../../services/auth';
 
 const LOGIN_IMAGE = 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=900&q=85&auto=format&fit=crop';
 
@@ -148,7 +149,7 @@ export default function LoginPage() {
   const handleSocial = async (provider) => {
     setError('');
     const action = provider === 'google' ? signInWithGoogle : signInWithFacebook;
-    const { error: authError } = await action(window.location.origin + redirectPath);
+    const { error: authError } = await action(buildAuthRedirectUrl(redirectPath));
     if (authError) {
       if (authError.code === 'not_configured') {
         navigate(redirectPath);
