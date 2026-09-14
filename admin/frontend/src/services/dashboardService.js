@@ -17,12 +17,16 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { API_BASE_URL } from '../lib/apiConfig';
 import { getCustomerStats } from './customerService';
 import { getProducts, deriveStatus } from './productService';
 import { getOrders } from './orderService';
 import { formatRecentOrderDate } from '../utils/timeAgo';
 
-const BACKEND_API = '/api';
+// Locally, the Vite dev proxy forwards /api → http://localhost:5000/api
+// (via VITE_BACKEND_URL in .env). In production this resolves to the
+// deployed backend's public base URL — see lib/apiConfig.js.
+const BACKEND_API = API_BASE_URL;
 
 async function getAdminToken() {
   const { data } = await supabase.auth.getSession();

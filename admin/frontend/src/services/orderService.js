@@ -8,10 +8,12 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { API_BASE_URL } from '../lib/apiConfig';
 
-// Use the Vite dev proxy (/api → http://localhost:5000/api)
-// In production, replace with the actual backend URL
-const BACKEND_API = '/api';
+// Locally, the Vite dev proxy forwards /api → http://localhost:5000/api
+// (via VITE_BACKEND_URL in .env). In production this resolves to the
+// deployed backend's public base URL — see lib/apiConfig.js.
+const BACKEND_API = API_BASE_URL;
 
 
 /**
