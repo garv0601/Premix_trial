@@ -5,7 +5,7 @@ import ReviewStats from '../../components/reviews/ReviewStats';
 import ReviewFilters from '../../components/reviews/ReviewFilters';
 import ReviewTable from '../../components/reviews/ReviewTable';
 import ReviewDetails from '../../components/reviews/ReviewDetails';
-import '../customers/Customers.css'; // Standard page layout
+import '../Customers/Customers.css'; // Standard page layout
 
 export default function Reviews() {
   const {
