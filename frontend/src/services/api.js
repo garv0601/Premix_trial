@@ -1,4 +1,4 @@
-const BASE_URL = '/api';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const fetchProducts = async (filters = {}) => {
   const query = new URLSearchParams();
