@@ -8,7 +8,11 @@
  *   1. `VITE_BACKEND_URL` — set via `.env` locally (e.g.
  *      http://localhost:5000/api, forwarded by the Vite dev proxy in
  *      vite.config.js) or via the hosting provider's build-time env vars.
- *   2. The deployed backend's public URL as a hardcoded fallback.
+ *   2. `VITE_API_URL` — accepted as an alias, since some deployments
+ *      (e.g. the Render admin frontend env config) use this name instead.
+ *      Keeping both means a mismatched env var name on the host fails
+ *      open to the correct backend instead of silently being ignored.
+ *   3. The deployed backend's public URL as a hardcoded fallback.
  *
  * IMPORTANT: the fallback must be the backend's own absolute URL, NEVER a
  * same-origin relative path like '/api' and NEVER `window.location.origin`.
@@ -19,4 +23,6 @@
  * at build time.
  */
 export const API_BASE_URL =
-  import.meta.env.VITE_BACKEND_URL || 'https://premix-trial.onrender.com/api';
+  import.meta.env.VITE_BACKEND_URL ||
+  import.meta.env.VITE_API_URL ||
+  'https://premix-trial.onrender.com/api';
