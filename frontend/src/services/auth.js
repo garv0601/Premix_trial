@@ -119,14 +119,63 @@ export const signOut = async () => {
 
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
+// The production static host has no SPA rewrite rule for nested paths (only
+// "/" resolves on a fresh top-level request — every other path, e.g.
+// "/account", 404s before index.html/React ever loads). Google's redirect
+// back from OAuth is exactly that kind of fresh top-level navigation, so if
+// `redirectTo` points at a nested route the #access_token hash lands on a
+// dead 404 page and Supabase never gets a chance to process it (this is what
+// broke mobile: the mobile-only bottom-nav sends users to /login?redirect=
+// %2Faccount, so the OAuth round-trip targets /account instead of /).
+//
+// Fix: always send the provider back to the site root (which always loads
+// the app), remember the real destination in sessionStorage, and let
+// AuthContext client-side navigate there once the session from the URL hash
+// has been picked up. This never touches/removes the hash itself — Supabase
+// still parses it exactly as before, just on a URL that is guaranteed to load.
+const OAUTH_REDIRECT_PATH_KEY = 'annpurna_oauth_redirect_path';
+
+const rememberOAuthDestination = (destination) => {
+  try {
+    const url = new URL(destination, getSiteUrl());
+    const path = `${url.pathname}${url.search}` || '/';
+    // Only worth remembering when it differs from the root we always land on.
+    if (path && path !== '/') {
+      window.sessionStorage.setItem(OAUTH_REDIRECT_PATH_KEY, path);
+    } else {
+      window.sessionStorage.removeItem(OAUTH_REDIRECT_PATH_KEY);
+    }
+  } catch {
+    // Malformed destination — fall back to landing on "/" with no redirect.
+  }
+};
+
+/**
+ * Reads (and clears) the destination path saved before an OAuth redirect.
+ * Called once the session has been restored so the user lands where they
+ * actually intended to go, without ever requiring the server to serve a
+ * fresh nested route.
+ */
+export const consumeOAuthRedirectPath = () => {
+  try {
+    const path = window.sessionStorage.getItem(OAUTH_REDIRECT_PATH_KEY);
+    if (path) window.sessionStorage.removeItem(OAUTH_REDIRECT_PATH_KEY);
+    return path;
+  } catch {
+    return null;
+  }
+};
+
 export const signInWithGoogle = async (redirectTo = buildAuthRedirectUrl('/')) => {
   if (credentialsMissing) return notConfigured();
-  return await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+  rememberOAuthDestination(redirectTo);
+  return await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: buildAuthRedirectUrl('/') } });
 };
 
 export const signInWithFacebook = async (redirectTo = buildAuthRedirectUrl('/')) => {
   if (credentialsMissing) return notConfigured();
-  return await supabase.auth.signInWithOAuth({ provider: 'facebook', options: { redirectTo } });
+  rememberOAuthDestination(redirectTo);
+  return await supabase.auth.signInWithOAuth({ provider: 'facebook', options: { redirectTo: buildAuthRedirectUrl('/') } });
 };
 
 // ── Session ──────────────────────────────────────────────────────────────────

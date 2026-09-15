@@ -3,6 +3,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   getSession,
   onAuthStateChange,
@@ -24,6 +25,7 @@ import {
   signOutAllDevices  as authSignOutAllDevices,
   deleteAccount      as authDeleteAccount,
   syncProfileRow     as authSyncProfileRow,
+  consumeOAuthRedirectPath,
 } from '../services/auth';
 import { credentialsMissing } from '../lib/supabase';
 
@@ -33,6 +35,20 @@ export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // After a Google/Facebook sign-in, the OAuth redirect always lands on "/"
+  // (see services/auth.js — the deployed static host 404s on a fresh
+  // top-level request to any other path). Once a session actually exists,
+  // send the user on to wherever they originally meant to go (e.g.
+  // /account), via a client-side navigation so no further server request —
+  // and therefore no risk of another 404 — is involved.
+  const restoreOAuthDestination = (activeSession) => {
+    const path = consumeOAuthRedirectPath();
+    if (path && activeSession) {
+      navigate(path, { replace: true });
+    }
+  };
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -47,10 +63,12 @@ export function AuthProvider({ children }) {
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       setLoading(false);
+      restoreOAuthDestination(existingSession);
 
       unsubscribe = onAuthStateChange((_event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
+        restoreOAuthDestination(newSession);
       });
     };
 
