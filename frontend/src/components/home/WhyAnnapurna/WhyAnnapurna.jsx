@@ -22,11 +22,11 @@ const reasons = [
     accent: '#2F8B57',
   },
   {
-    number: '04',
-    title: 'Made with Care',
-    body: 'A brand built around food, nourishment and the feeling of home — for ordinary Indian households.',
-    accent: '#B22222',
-  },
+  number: '04',
+  title: 'Made with Care',
+  body: 'Thoughtfully made with quality ingredients and care, bringing the warmth and comfort of homemade food to every meal.',
+  accent: '#B22222',
+},
   {
   number: '05',
   title: 'No Preservatives',
