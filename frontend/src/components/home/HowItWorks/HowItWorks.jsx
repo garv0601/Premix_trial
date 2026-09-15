@@ -6,22 +6,17 @@ const steps = [
   {
     number: '01',
     label: 'Open',
-    detail: 'Open the premix packet. That is all the preparation needed.',
+    detail: 'Open the premix packet and get everything ready to cook.',
   },
   {
     number: '02',
-    label: 'Mix',
-    detail: 'Follow the simple instructions on the pack.',
+    label: 'Mix & Cook',
+    detail: 'Follow the simple instructions on the pack, mix with the required ingredients, and cook.',
   },
   {
     number: '03',
-    label: 'Cook',
-    detail: 'Cook on your stovetop with minimal effort.',
-  },
-  {
-    number: '04',
     label: 'Serve',
-    detail: 'Enjoy a warm, familiar Indian meal in minutes.',
+    detail: 'Enjoy a warm, delicious Indian meal in minutes.',
   },
 ];
 

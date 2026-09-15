@@ -23,12 +23,6 @@ const reasons = [
   },
   {
   number: '04',
-  title: 'Made with Care',
-  body: 'Thoughtfully made with quality ingredients and care, bringing the warmth and comfort of homemade food to every meal.',
-  accent: '#B22222',
-},
-  {
-  number: '05',
   title: 'No Preservatives',
   body: 'Made with simple, wholesome ingredients and no added preservatives — just the goodness of homemade food.',
   accent: '#D4A017',
