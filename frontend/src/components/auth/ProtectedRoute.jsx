@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — ProtectedRoute
+ * ANNAPURNA — ProtectedRoute
  *
  * Wraps any route that requires authentication.
  *

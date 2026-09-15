@@ -2,14 +2,14 @@ import React, { useRef } from 'react';
 import Hero from '../../components/home/Hero/Hero';
 import PremixExplanation from '../../components/home/PremixExplanation/PremixExplanation';
 import FeaturedProducts from '../../components/home/FeaturedProducts/FeaturedProducts';
-import WhyAnnpurna from '../../components/home/WhyAnnpurna/WhyAnnpurna';
+import WhyAnnapurna from '../../components/home/WhyAnnapurna/WhyAnnapurna';
 import HowItWorks from '../../components/home/HowItWorks/HowItWorks';
 import ReviewsPreview from '../../components/home/ReviewsPreview/ReviewsPreview';
 import StoryPreview from '../../components/home/StoryPreview/StoryPreview';
 import ShopCTA from '../../components/home/ShopCTA/ShopCTA';
 
 /**
- * ANNPURNA Homepage
+ * ANNAPURNA Homepage
  * Composes all homepage sections in storytelling order.
  * Business logic and data sourcing remain in App.jsx / custom hooks.
  *
@@ -17,7 +17,7 @@ import ShopCTA from '../../components/home/ShopCTA/ShopCTA';
  * 1. Hero
  * 2. Premix Explanation
  * 3. Featured Products
- * 4. Why Annpurna
+ * 4. Why Annapurna
  * 5. How It Works
  * 6. Customer Reviews
  * 7. Our Story Preview
@@ -48,8 +48,8 @@ export default function HomePage({ onAddToCartRaw, onUpdateQuantity, cartItems }
         />
       </div>
 
-      {/* 4. Why Annpurna */}
-      <WhyAnnpurna />
+      {/* 4. Why Annapurna */}
+      <WhyAnnapurna />
 
       {/* 5. How It Works */}
       <HowItWorks />

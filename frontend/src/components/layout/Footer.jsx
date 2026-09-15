@@ -96,7 +96,7 @@ export default function Footer() {
               marginBottom: '14px',
             }}
           >
-            ANNPURNA
+            ANNAPURNA
           </span>
           <p
             style={{
@@ -141,7 +141,7 @@ export default function Footer() {
               color: 'rgba(255, 248, 244, 0.4)',
             }}
           >
-            © {new Date().getFullYear()} Annpurna. All rights reserved.
+            © {new Date().getFullYear()} Annapurna. All rights reserved.
           </p>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             {footerLinks.legal.map((l) => (

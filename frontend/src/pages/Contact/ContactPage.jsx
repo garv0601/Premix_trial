@@ -16,8 +16,8 @@ export default function ContactPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    document.title = 'ANNPURNA | Contact Us';
-    return () => { document.title = 'ANNPURNA'; };
+    document.title = 'ANNAPURNA | Contact Us';
+    return () => { document.title = 'ANNAPURNA'; };
   }, []);
 
   const handleChange = (e) => {
@@ -187,7 +187,7 @@ export default function ContactPage() {
                     lineHeight: 1.6,
                     marginBottom: '24px'
                   }}>
-                    Thanks for reaching out to ANNPURNA. We've received your message and will get back to you soon.
+                    Thanks for reaching out to ANNAPURNA. We've received your message and will get back to you soon.
                   </p>
                   <button
                     onClick={() => {
@@ -373,7 +373,7 @@ export default function ContactPage() {
                     <div>
                       <div style={{ fontFamily: "'Be Vietnam Pro', sans-serif", fontSize: '13px', fontWeight: 600, color: '#7A5C4A', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>Email Support</div>
                       {/* Placeholder email, to be replaced via config later */}
-                      <a href="mailto:support@annpurna.com" style={{ fontFamily: "'Be Vietnam Pro', sans-serif", fontSize: '16px', fontWeight: 500, color: '#1C1007', textDecoration: 'none' }}>support@annpurna.com</a>
+                      <a href="mailto:support@annapurna.com" style={{ fontFamily: "'Be Vietnam Pro', sans-serif", fontSize: '16px', fontWeight: 500, color: '#1C1007', textDecoration: 'none' }}>support@annapurna.com</a>
                     </div>
                   </div>
                 </motion.div>

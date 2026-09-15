@@ -1,16 +1,16 @@
-# 🌾 Annpurna Premix — E-Commerce Web Application
+# 🌾 Annapurna Premix — E-Commerce Web Application
 
 > **Status:** 🔒 Private Repository — Active Development  
 > **Last Updated:** September 2026
 
-A full-stack e-commerce web application for **Annpurna Premix**, an Indian food premix brand. Built with React + Vite on the frontend, Node.js + Express on the backend, Supabase as the database & auth layer, and a separate React admin dashboard.
+A full-stack e-commerce web application for **Annapurna Premix**, an Indian food premix brand. Built with React + Vite on the frontend, Node.js + Express on the backend, Supabase as the database & auth layer, and a separate React admin dashboard.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-Annpurna-Premix/
+Annapurna-Premix/
 │
 ├── frontend/               # Customer-facing React + Vite app
 ├── backend/                # Node.js + Express REST API
@@ -63,7 +63,7 @@ Annpurna-Premix/
 ### Key Components
 
 - **Layout** — Header, Footer, WhatsApp floating button
-- **Home** — Hero, FeaturedProducts, HowItWorks, PremixExplanation, ReviewsPreview, ShopCTA, StoryPreview, WhyAnnpurna
+- **Home** — Hero, FeaturedProducts, HowItWorks, PremixExplanation, ReviewsPreview, ShopCTA, StoryPreview, WhyAnnapurna
 - **Product** — ProductCard, ProductGrid, ProductFilter, ProductDetailModal
 - **Cart** — CartDrawer (slide-out), CartPage
 - **Checkout** — CheckoutPage with Razorpay integration, OrderSuccessPage

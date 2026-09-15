@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — Coupon Service (Frontend)
+ * ANNAPURNA — Coupon Service (Frontend)
  *
  * Validates a coupon code against the backend (which enforces all rules
  * server-side: active/expired, minimum order, usage limits, per-customer

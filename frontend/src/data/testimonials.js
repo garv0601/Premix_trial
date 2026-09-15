@@ -1,5 +1,5 @@
 // ================================================================
-// ANNPURNA — Mock Testimonials Data
+// ANNAPURNA — Mock Testimonials Data
 // Isolated dataset: replace with MongoDB API calls in production
 // NOTE: These are placeholder reviews for development only.
 //       Do NOT use as real customer quotes without consent.

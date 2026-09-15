@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Account Routes
+ * ANNAPURNA Backend — Account Routes
  *
  * Customer routes:
  *   DELETE /api/account          — Delete my own account (JWT-verified)

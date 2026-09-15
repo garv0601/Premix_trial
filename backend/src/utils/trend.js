@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Trend Helper
+ * ANNAPURNA Backend — Trend Helper
  *
  * Computes a "vs. previous period" percentage + direction used by dashboard
  * KPI cards (Total Sales, Total Orders, New Customers). Shared so every

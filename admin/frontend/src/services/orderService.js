@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Admin — Order Service
+ * ANNAPURNA Admin — Order Service
  *
  * Fetches real order data from the backend API, which queries Supabase.
  * Admin authentication is handled via the admin's Supabase session JWT.

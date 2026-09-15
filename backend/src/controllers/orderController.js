@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Order Controller
+ * ANNAPURNA Backend — Order Controller
  *
  * Handles HTTP request/response for order endpoints.
  * Delegates business logic to the order service.

@@ -4,7 +4,7 @@ import LegalPage from './LegalPage';
 const SECTIONS = [
   {
     heading: 'Acceptance of Terms',
-    body: 'By accessing or using the Annpurna website and placing an order, you agree to these Terms & Conditions. If you do not agree, please do not use the site.',
+    body: 'By accessing or using the Annapurna website and placing an order, you agree to these Terms & Conditions. If you do not agree, please do not use the site.',
   },
   {
     heading: 'Products & Pricing',
@@ -35,7 +35,7 @@ export default function TermsPage() {
       title="Terms & Conditions"
       updated="Last updated: January 2025"
       sections={SECTIONS}
-      docTitle="Terms & Conditions — ANNPURNA"
+      docTitle="Terms & Conditions — ANNAPURNA"
     />
   );
 }

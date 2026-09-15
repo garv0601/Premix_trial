@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Leaf, HeartHandshake, Sparkles, ArrowRight } from 'lucide-react';
 
 /**
- * ANNPURNA — About page.
+ * ANNAPURNA — About page.
  * A concise brand/mission page, distinct from the narrative "Our Story".
  * Styling intentionally mirrors the existing warm-ivory site language.
  */
@@ -28,8 +28,8 @@ const VALUES = [
 
 export default function AboutPage() {
   useEffect(() => {
-    document.title = 'About — ANNPURNA';
-    return () => { document.title = 'ANNPURNA'; };
+    document.title = 'About — ANNAPURNA';
+    return () => { document.title = 'ANNAPURNA'; };
   }, []);
 
   return (
@@ -44,7 +44,7 @@ export default function AboutPage() {
           color: '#B22222',
           marginBottom: '14px',
         }}>
-          About Annpurna
+          About Annapurna
         </p>
 
         <h1 style={{
@@ -65,7 +65,7 @@ export default function AboutPage() {
           lineHeight: 1.75,
           marginBottom: '18px',
         }}>
-          Annpurna — named after the goddess of nourishment — exists for a single belief: you
+          Annapurna — named after the goddess of nourishment — exists for a single belief: you
           should never have to choose between convenience and authenticity. We bring the warmth,
           nutrition and unmistakable taste of traditional Indian food to your table, every day.
         </p>

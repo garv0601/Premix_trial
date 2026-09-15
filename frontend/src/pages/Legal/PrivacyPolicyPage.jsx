@@ -35,7 +35,7 @@ export default function PrivacyPolicyPage() {
       title="Privacy Policy"
       updated="Last updated: January 2025"
       sections={SECTIONS}
-      docTitle="Privacy Policy — ANNPURNA"
+      docTitle="Privacy Policy — ANNAPURNA"
     />
   );
 }

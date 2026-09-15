@@ -477,11 +477,11 @@ export default function ProductDetailPage({ cartItems = [], onAddToCartRaw, onUp
   // Set dynamic page title
   useEffect(() => {
     if (product) {
-      document.title = `ANNPURNA | ${product.name}`;
+      document.title = `ANNAPURNA | ${product.name}`;
     } else {
-      document.title = 'ANNPURNA | Product Not Found';
+      document.title = 'ANNAPURNA | Product Not Found';
     }
-    return () => { document.title = 'ANNPURNA'; };
+    return () => { document.title = 'ANNAPURNA'; };
   }, [product]);
 
   // Handlers

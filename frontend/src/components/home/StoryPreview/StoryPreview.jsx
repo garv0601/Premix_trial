@@ -118,7 +118,7 @@ export default function StoryPreview() {
               marginBottom: '14px',
             }}
           >
-            Annpurna is rooted in the Indian tradition of feeding, nourishing and
+            Annapurna is rooted in the Indian tradition of feeding, nourishing and
             bringing people together. We believe that traditional food should not be
             complicated or time-consuming — it should be accessible to every household,
             every day.

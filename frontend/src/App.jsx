@@ -31,7 +31,7 @@ import { useCart } from './hooks/useCart';
 import { useCoupon } from './hooks/useCoupon';
 
 /**
- * ANNPURNA App root.
+ * ANNAPURNA App root.
  * Cart persists via localStorage through authentication redirects.
  * Auth state is managed by AuthProvider / AuthContext.
  */

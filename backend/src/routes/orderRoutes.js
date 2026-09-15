@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Order Routes
+ * ANNAPURNA Backend — Order Routes
  *
  * Customer routes:
  *   POST /api/orders/create-razorpay-order  — Create Razorpay order

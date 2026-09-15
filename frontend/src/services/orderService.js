@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — Order Service (Frontend)
+ * ANNAPURNA — Order Service (Frontend)
  *
  * Fetches real orders from the backend API which queries Supabase.
  * The authenticated Supabase JWT is passed as a Bearer token so the

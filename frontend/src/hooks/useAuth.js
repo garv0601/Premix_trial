@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — useAuth hook
+ * ANNAPURNA — useAuth hook
  *
  * Re-exports the useAuth hook from AuthContext for convenient import.
  *

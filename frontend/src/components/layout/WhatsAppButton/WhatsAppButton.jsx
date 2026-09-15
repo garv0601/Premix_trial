@@ -55,7 +55,7 @@ export default function WhatsAppButton({ hideTooltipOnMobile = false }) {
           href={WA_HREF}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Contact Annpurna support on WhatsApp"
+          aria-label="Contact Annapurna support on WhatsApp"
           title="Chat with us on WhatsApp"
           style={{
             width: '52px',

@@ -17,7 +17,7 @@ import RecentOrders from '../../components/account/RecentOrders';
 import MaasTip from '../../components/account/MaasTip';
 
 /**
- * ANNPURNA — Customer Account page.
+ * ANNAPURNA — Customer Account page.
  *
  * A clean, warm, list-based account hub (mobile-first, spacious on desktop).
  * Every row maps to an EXISTING route / service:

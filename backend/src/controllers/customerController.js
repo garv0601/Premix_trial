@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Admin Customer Controller
+ * ANNAPURNA Backend — Admin Customer Controller
  *
  * Uses the SERVICE-ROLE client (supabaseAdmin) so admin reads/writes on
  * `Profiles` are NOT blocked by the customer-privacy RLS policies that

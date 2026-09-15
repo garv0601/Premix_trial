@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Environment Bootstrap
+ * ANNAPURNA Backend — Environment Bootstrap
  *
  * Must be the FIRST import in server.js. ES module imports are hoisted and
  * evaluated before any other top-level code in the importing file, so calling

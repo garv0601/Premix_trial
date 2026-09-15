@@ -63,7 +63,7 @@ export default function PremixExplanation() {
               marginBottom: '14px',
             }}
           >
-            What is an Annpurna Premix?
+            What is an Annapurna Premix?
           </motion.p>
 
           <motion.h2
@@ -92,7 +92,7 @@ export default function PremixExplanation() {
               maxWidth: '440px',
             }}
           >
-            Annpurna premixes bring together carefully prepared ingredients so you can enjoy
+            Annapurna premixes bring together carefully prepared ingredients so you can enjoy
             familiar Indian favourites without spending hours measuring, mixing and preparing.
           </motion.p>
         </motion.div>

@@ -60,7 +60,7 @@ export default function AdminSidebar({ isOpen, onClose }) {
           <span>अ</span>
         </div>
         <div className="sidebar-brand-text">
-          <h1>ANNPURNA</h1>
+          <h1>ANNAPURNA</h1>
           <p>Maa's Kitchen Account</p>
         </div>
         <button

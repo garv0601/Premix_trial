@@ -1,5 +1,5 @@
 /**
- * Dashboard data service for ANNPURNA Admin.
+ * Dashboard data service for ANNAPURNA Admin.
  *
  * Deliberately reuses the SAME data sources as the rest of the admin app
  * instead of inventing parallel queries/business rules:

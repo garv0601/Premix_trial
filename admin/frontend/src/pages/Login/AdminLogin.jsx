@@ -8,7 +8,7 @@ import './AdminLogin.css';
 /**
  * ADMIN LOGIN PAGE
  * 
- * Uses the ANNPURNA design system for a warm, branded login experience.
+ * Uses the ANNAPURNA design system for a warm, branded login experience.
  * Connects to Supabase Auth via the AdminAuthContext.
  */
 export default function AdminLogin() {
@@ -62,7 +62,7 @@ export default function AdminLogin() {
           <div className="admin-login-brand-icon">
             <span>अ</span>
           </div>
-          <h1 className="admin-login-title">ANNPURNA</h1>
+          <h1 className="admin-login-title">ANNAPURNA</h1>
           <p className="admin-login-subtitle">Admin Portal</p>
         </div>
 
@@ -92,7 +92,7 @@ export default function AdminLogin() {
                 id="admin-email"
                 type="email"
                 className="admin-login-input"
-                placeholder="admin@annpurna.com"
+                placeholder="admin@annapurna.com"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(null); }}
                 disabled={submitting}

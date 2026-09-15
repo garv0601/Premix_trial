@@ -1,5 +1,5 @@
 /**
- * Coupon data types for ANNPURNA Admin.
+ * Coupon data types for ANNAPURNA Admin.
  * Mirrors the real `public.coupons` Supabase table (see admin/DATABASE_SCHEMA.md §8).
  */
 

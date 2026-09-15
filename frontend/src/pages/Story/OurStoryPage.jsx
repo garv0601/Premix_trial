@@ -819,8 +819,8 @@ export default function OurStoryPage() {
   const { scrollYProgress } = useScroll({ target: containerRef });
 
   useEffect(() => {
-    document.title = 'ANNPURNA | Our Story';
-    return () => { document.title = 'ANNPURNA'; };
+    document.title = 'ANNAPURNA | Our Story';
+    return () => { document.title = 'ANNAPURNA'; };
   }, []);
 
   const handleSectionInView = useCallback((index) => {

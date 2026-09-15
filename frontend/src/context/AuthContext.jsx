@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — Auth Context
+ * ANNAPURNA — Auth Context
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';

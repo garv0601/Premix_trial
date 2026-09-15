@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, ShoppingBag } from 'lucide-react';
 
 /**
- * ANNPURNA — Wishlist page.
+ * ANNAPURNA — Wishlist page.
  *
  * A dedicated wishlist feature is not yet implemented in the app, so this
  * page intentionally shows an honest empty state instead of fabricating
@@ -12,8 +12,8 @@ import { Heart, ArrowLeft, ShoppingBag } from 'lucide-react';
  */
 export default function WishlistPage() {
   useEffect(() => {
-    document.title = 'Wishlist — ANNPURNA';
-    return () => { document.title = 'ANNPURNA'; };
+    document.title = 'Wishlist — ANNAPURNA';
+    return () => { document.title = 'ANNAPURNA'; };
   }, []);
 
   return (

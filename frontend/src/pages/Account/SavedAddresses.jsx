@@ -248,7 +248,7 @@ export default function SavedAddresses() {
                       No saved addresses yet
                     </h3>
                     <p style={{ fontFamily: "'Be Vietnam Pro', sans-serif", fontSize: '15px', color: '#5D4037', margin: 0, maxWidth: '400px' }}>
-                      Add your home or office address so your favorite ANNPURNA premixes can reach you easily.
+                      Add your home or office address so your favorite ANNAPURNA premixes can reach you easily.
                     </p>
                   </div>
                   <button

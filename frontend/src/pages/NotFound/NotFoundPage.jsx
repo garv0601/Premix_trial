@@ -19,15 +19,15 @@ const PARTICLES = [
 ];
 
 /**
- * ANNPURNA — 404 fallback page.
+ * ANNAPURNA — 404 fallback page.
  * Shown for unmatched routes (catch-all "*" route in App.jsx) via a
  * lighthearted, on-brand "recipe not found" animation. Pure UI —
  * no data fetching, no interaction with cart/auth/checkout state.
  */
 export default function NotFoundPage() {
   useEffect(() => {
-    document.title = 'Page Not Found — ANNPURNA';
-    return () => { document.title = 'ANNPURNA'; };
+    document.title = 'Page Not Found — ANNAPURNA';
+    return () => { document.title = 'ANNAPURNA'; };
   }, []);
 
   return (

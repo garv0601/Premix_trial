@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Coupon Routes
+ * ANNAPURNA Backend — Coupon Routes
  *
  * POST /api/coupons/validate — validate + preview a coupon's discount
  */

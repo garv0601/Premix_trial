@@ -1,5 +1,5 @@
 // ================================================================
-// ANNPURNA — Mock Product Data
+// ANNAPURNA — Mock Product Data
 // Isolated dataset: replace with MongoDB API calls in production
 // ================================================================
 

@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Coupon Controller
+ * ANNAPURNA Backend — Coupon Controller
  *
  * Lets the customer frontend preview/validate a coupon code (and its
  * discount) before placing an order. Uses the same server-side validation

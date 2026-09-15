@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — Authentication Service
+ * ANNAPURNA — Authentication Service
  *
  * All Supabase auth calls go through this module.
  */
@@ -133,7 +133,7 @@ export const signOut = async () => {
 // AuthContext client-side navigate there once the session from the URL hash
 // has been picked up. This never touches/removes the hash itself — Supabase
 // still parses it exactly as before, just on a URL that is guaranteed to load.
-const OAUTH_REDIRECT_PATH_KEY = 'annpurna_oauth_redirect_path';
+const OAUTH_REDIRECT_PATH_KEY = 'annapurna_oauth_redirect_path';
 
 const rememberOAuthDestination = (destination) => {
   try {

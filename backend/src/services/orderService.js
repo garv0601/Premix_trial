@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Order Service
+ * ANNAPURNA Backend — Order Service
  *
  * Handles all order-related database operations using the Supabase admin client.
  * All totals are calculated server-side — frontend values are ignored.

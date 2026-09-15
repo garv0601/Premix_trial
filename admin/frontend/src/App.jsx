@@ -12,7 +12,7 @@ import Coupons from './pages/Coupons/Coupons';
 import Reviews from './pages/Reviews/Reviews';
 
 /**
- * ANNPURNA Admin root.
+ * ANNAPURNA Admin root.
  * 
  * Auth flow:
  *   /admin/login  → public login page

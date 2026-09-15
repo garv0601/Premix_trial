@@ -29,11 +29,11 @@ const reasons = [
   },
 ];
 
-export default function WhyAnnpurna() {
+export default function WhyAnnapurna() {
   return (
     <section
-      id="why-annpurna"
-      aria-label="Why choose Annpurna?"
+      id="why-annapurna"
+      aria-label="Why choose Annapurna?"
       style={{
         background: '#FEF4EC',
         padding: 'clamp(60px, 8vw, 100px) 0',
@@ -73,7 +73,7 @@ export default function WhyAnnpurna() {
               marginBottom: '14px',
             }}
           >
-            Why Annpurna?
+            Why Annapurna?
           </motion.h2>
           <motion.p
             variants={fadeUp}

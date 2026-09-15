@@ -65,7 +65,7 @@ export default function ProfileCard({ user }) {
             display: 'block',
             marginTop: '4px'
           }}>
-            ANNPURNA Member
+            ANNAPURNA Member
           </span>
         </div>
       </div>

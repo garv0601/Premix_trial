@@ -178,7 +178,7 @@ export default function Hero({ onExploreClick }) {
                 e.currentTarget.style.borderColor = 'rgba(93, 64, 55, 0.35)';
               }}
             >
-              Discover Annpurna
+              Discover Annapurna
             </Link>
           </motion.div>
         </motion.div>

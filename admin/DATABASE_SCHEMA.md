@@ -1,4 +1,4 @@
-# ANNPURNA — Supabase Database Schema Reference
+# ANNAPURNA — Supabase Database Schema Reference
 
 > **Purpose:** Single source of truth for all backend and frontend development.
 > **Last Updated:** 2026-09-11
@@ -662,4 +662,4 @@ Profiles (on delete) → deleted_customers (immutable snapshot)
 
 ---
 
-*This document is the source of truth for the ANNPURNA Supabase schema. All backend services, admin features, and customer-facing integrations must reference this file when implementing database operations.*
+*This document is the source of truth for the ANNAPURNA Supabase schema. All backend services, admin features, and customer-facing integrations must reference this file when implementing database operations.*

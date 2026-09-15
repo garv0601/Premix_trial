@@ -345,7 +345,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
       amount:   rzpOrderData.amount,      // amount in paise (set by server)
       currency: rzpOrderData.currency || 'INR',
       order_id: rzpOrderData.id,          // Razorpay order ID
-      name:     'ANNPURNA',
+      name:     'ANNAPURNA',
       description: `Order for ${cartItems.length} item${cartItems.length > 1 ? 's' : ''}`,
       image:    '/logo.png',
       prefill: {
@@ -446,7 +446,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
       {/* HEADER */}
       <header className="checkout-header">
         <div className="checkout-header-inner">
-          <Link to="/" className="checkout-brand">ANNPURNA</Link>
+          <Link to="/" className="checkout-brand">ANNAPURNA</Link>
           <div className="checkout-secure-badge">
             <Lock size={14} /> Secure Checkout
           </div>
@@ -1027,8 +1027,8 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
       {/* FOOTER */}
       <footer className="checkout-footer">
         <div className="checkout-footer-inner">
-          <span className="checkout-footer-brand">ANNPURNA</span>
-          <span className="checkout-footer-copy">© {new Date().getFullYear()} Annpurna Premix. Homemade with love.</span>
+          <span className="checkout-footer-brand">ANNAPURNA</span>
+          <span className="checkout-footer-copy">© {new Date().getFullYear()} Annapurna Premix. Homemade with love.</span>
         </div>
       </footer>
     </div>

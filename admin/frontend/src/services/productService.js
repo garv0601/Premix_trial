@@ -1,5 +1,5 @@
 /**
- * Product service for ANNPURNA Admin.
+ * Product service for ANNAPURNA Admin.
  *
  * Connected to public.products via Supabase.
  * Uses the existing Supabase client from lib/supabase.js.

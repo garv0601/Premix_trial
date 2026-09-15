@@ -1,5 +1,5 @@
 /**
- * Product image upload utilities for ANNPURNA Admin.
+ * Product image upload utilities for ANNAPURNA Admin.
  *
  * Handles uploading admin-selected gallery images to Supabase Storage for
  * products, and safely cleaning up files that become orphaned (upload

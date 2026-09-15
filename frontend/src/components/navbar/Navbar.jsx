@@ -29,7 +29,7 @@ const mobileMenuGroups = [
       { label: 'Home', to: '/', icon: Home },
       { label: 'Shop', to: '/shop', icon: ShoppingBag },
       { label: 'Our Story', to: '/story', icon: BookOpen },
-      { label: 'About Annpurna', to: '/about', icon: Leaf },
+      { label: 'About Annapurna', to: '/about', icon: Leaf },
       { label: 'Contact Us', to: '/contact', icon: Mail },
     ],
   },
@@ -50,10 +50,10 @@ const mobileMenuGroups = [
   },
 ];
 
-const AnnpurnaWordmark = () => (
+const AnnapurnaWordmark = () => (
   <Link
     to="/"
-    aria-label="ANNPURNA Premix Home"
+    aria-label="ANNAPURNA Premix Home"
     style={{
       textDecoration: 'none',
       display: 'block',
@@ -67,7 +67,7 @@ const AnnpurnaWordmark = () => (
       letterSpacing: '0.04em',
       lineHeight: 1,
     }}>
-      ANNPURNA
+      ANNAPURNA
     </div>
     <div style={{
       fontFamily: "'Be Vietnam Pro', sans-serif",
@@ -171,7 +171,7 @@ export default function Navbar({ cartCount = 0, onOpenCart }) {
         <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
 
           {/* Wordmark */}
-          <AnnpurnaWordmark />
+          <AnnapurnaWordmark />
 
           {/* Desktop Nav Links */}
           <div
@@ -438,7 +438,7 @@ export default function Navbar({ cartCount = 0, onOpenCart }) {
                 }}
               >
                 <div onClick={() => setMenuOpen(false)}>
-                  <AnnpurnaWordmark />
+                  <AnnapurnaWordmark />
                 </div>
                 <button
                   onClick={() => setMenuOpen(false)}

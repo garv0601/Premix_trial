@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, ShoppingBag, Package, User } from 'lucide-react';
 
 /**
- * ANNPURNA — Mobile Bottom Navigation
+ * ANNAPURNA — Mobile Bottom Navigation
  *
  * A premium, minimal floating bar shown only on mobile/tablet (< 768px).
  * On desktop it is hidden so the existing top navigation stays in charge.

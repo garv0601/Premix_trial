@@ -1,5 +1,5 @@
 /**
- * Order data types for ANNPURNA Admin.
+ * Order data types for ANNAPURNA Admin.
  * Mirrors the Supabase schema: public.orders, profiles, order_items, payments, coupons.
  *
  * Relationships:

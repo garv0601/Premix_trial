@@ -1,5 +1,5 @@
 /**
- * Customer data types for ANNPURNA Admin.
+ * Customer data types for ANNAPURNA Admin.
  * Mirrors the Supabase schema: public.profiles, augmented with derived stats from orders.
  *
  * Relationships:

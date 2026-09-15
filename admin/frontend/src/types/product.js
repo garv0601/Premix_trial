@@ -1,5 +1,5 @@
 /**
- * Product data types for ANNPURNA Admin.
+ * Product data types for ANNAPURNA Admin.
  * Maps to the existing Supabase schema: public.products
  *
  * Schema columns:

@@ -1,5 +1,5 @@
 /**
- * Dashboard data types for ANNPURNA Admin.
+ * Dashboard data types for ANNAPURNA Admin.
  * These mirror the shapes that will come from Supabase queries.
  */
 

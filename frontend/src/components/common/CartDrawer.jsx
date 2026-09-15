@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 
-// Use a simple formatter since formatters.js uses USD — ANNPURNA uses ₹
+// Use a simple formatter since formatters.js uses USD — ANNAPURNA uses ₹
 const formatPrice = (amount, currency = '₹') =>
   `${currency}${Number(amount).toLocaleString('en-IN')}`;
 

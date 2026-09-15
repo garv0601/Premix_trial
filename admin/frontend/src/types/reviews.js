@@ -1,5 +1,5 @@
 /**
- * Review data types for ANNPURNA Admin.
+ * Review data types for ANNAPURNA Admin.
  * Prepared for Supabase migration.
  */
 

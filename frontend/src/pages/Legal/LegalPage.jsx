@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
 
 /**
- * ANNPURNA — shared presentational shell for simple legal/info pages
+ * ANNAPURNA — shared presentational shell for simple legal/info pages
  * (Privacy Policy, Terms & Conditions). Keeps styling consistent with
  * the warm-ivory site language without duplicating layout markup.
  */
 export default function LegalPage({ eyebrow, title, updated, sections = [], docTitle }) {
   useEffect(() => {
     if (docTitle) document.title = docTitle;
-    return () => { document.title = 'ANNPURNA'; };
+    return () => { document.title = 'ANNAPURNA'; };
   }, [docTitle]);
 
   return (

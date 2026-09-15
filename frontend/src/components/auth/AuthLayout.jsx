@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — Shared Auth Layout
+ * ANNAPURNA — Shared Auth Layout
  *
  * Two-column layout used by both Login and Sign Up pages.
  * Left: full-height image panel with overlay text.
@@ -95,7 +95,7 @@ export default function AuthLayout({
               letterSpacing: '0.04em',
             }}
           >
-            ANNPURNA
+            ANNAPURNA
           </Link>
         </div>
 

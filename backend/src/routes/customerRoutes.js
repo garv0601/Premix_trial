@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Admin Customer Routes
+ * ANNAPURNA Backend — Admin Customer Routes
  *
  * All routes require an authenticated, active admin (requireAdmin).
  *

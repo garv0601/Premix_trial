@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Razorpay Client
+ * ANNAPURNA Backend — Razorpay Client
  *
  * Initialises the Razorpay SDK with the secret key.
  * The secret key MUST stay server-side only.

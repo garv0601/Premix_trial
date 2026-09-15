@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Account Controller
+ * ANNAPURNA Backend — Account Controller
  *
  * Handles account-level operations that require the service-role key
  * (which must never be exposed to the frontend). The caller's JWT is

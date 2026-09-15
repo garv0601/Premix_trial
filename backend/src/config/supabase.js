@@ -1,5 +1,5 @@
 /**
- * ANNPURNA Backend — Supabase Admin Client
+ * ANNAPURNA Backend — Supabase Admin Client
  *
  * Uses the SERVICE-ROLE key which bypasses RLS.
  * This module MUST only run server-side.

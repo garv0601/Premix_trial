@@ -1,5 +1,5 @@
 /**
- * ANNPURNA — Supabase Client
+ * ANNAPURNA — Supabase Client
  *
  * Reads VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY from the
  * environment (set in .env or .env.local).

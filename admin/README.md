@@ -1,4 +1,4 @@
-# ANNPURNA Admin Panel
+# ANNAPURNA Admin Panel
 
 This is the administrative dashboard for Maa's Kitchen. It is built as a separate application from the main customer-facing website to ensure security and maintainability.
 

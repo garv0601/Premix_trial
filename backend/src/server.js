@@ -42,7 +42,7 @@ app.use(errorHandler);
 
 // Start server
 app.listen(config.port, () => {
-  console.log(`🚀 ANNPURNA API Server running on port ${config.port} [${config.env}]`);
+  console.log(`🚀 ANNAPURNA API Server running on port ${config.port} [${config.env}]`);
   console.log(`📡 Health Check:  http://localhost:${config.port}/health`);
   console.log(`🛍️ Products:      http://localhost:${config.port}${config.apiPrefix}/products`);
   console.log(`📦 Orders:        http://localhost:${config.port}${config.apiPrefix}/orders`);
