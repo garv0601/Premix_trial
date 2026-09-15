@@ -93,7 +93,7 @@ export default function PremixExplanation() {
             }}
           >
             Annapurna premixes bring together carefully prepared ingredients so you can enjoy
-            familiar Indian favourites without spending hours measuring, mixing and preparing.
+            familiar Indian favourites without spending hours measuring, mixing and cooking, as everything is prepared with dry ingredients.
           </motion.p>
         </motion.div>
 

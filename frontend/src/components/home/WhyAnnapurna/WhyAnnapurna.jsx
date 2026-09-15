@@ -27,6 +27,12 @@ const reasons = [
     body: 'A brand built around food, nourishment and the feeling of home — for ordinary Indian households.',
     accent: '#B22222',
   },
+  {
+  number: '05',
+  title: 'No Preservatives',
+  body: 'Made with simple, wholesome ingredients and no added preservatives — just the goodness of homemade food.',
+  accent: '#D4A017',
+},
 ];
 
 export default function WhyAnnapurna() {
