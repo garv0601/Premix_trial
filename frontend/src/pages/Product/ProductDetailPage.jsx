@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { ShoppingBag, Minus, Plus, ArrowLeft, Clock, Package, Users, Lightbulb, CheckCircle2 } from 'lucide-react';
-import { findProductBySlug } from '../../data/products';
+import { ShoppingBag, Minus, Plus, ArrowLeft, Clock, Package, Users, Lightbulb, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useProductBySlug } from '../../hooks/useActiveProducts';
 import { fadeUp } from '../../utils/animations';
 
 // ── Badge colour mapping ──
@@ -25,14 +25,44 @@ const badgeColorMap = {
 
 const defaultBadgeColor = { bg: '#F5F0EB', color: '#5D4037', border: '#D4C4B5' };
 
+// ── Slide + fade variants for the main gallery image ──
+const gallerySlideVariants = {
+  enter: (direction) => ({
+    x: direction > 0 ? '8%' : '-8%',
+    opacity: 0,
+  }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction) => ({
+    x: direction < 0 ? '8%' : '-8%',
+    opacity: 0,
+  }),
+};
+
 // ================================================================
 // PRODUCT GALLERY
 // ================================================================
 function ProductGallery({ images, productName }) {
   const shouldReduce = useReducedMotion();
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [[activeIndex, direction], setActive] = useState([0, 0]);
   const galleryImages = images && images.length > 0 ? images : [];
   const showThumbnails = galleryImages.length > 1;
+  const thumbRowRef = React.useRef(null);
+
+  const goTo = (nextIndex) => {
+    if (nextIndex === activeIndex) return;
+    const wrapped = (nextIndex + galleryImages.length) % galleryImages.length;
+    setActive([wrapped, wrapped > activeIndex ? 1 : -1]);
+  };
+
+  // Keep the active thumbnail scrolled into view (handles arrow-key / swipe navigation)
+  useEffect(() => {
+    const row = thumbRowRef.current;
+    if (!row) return;
+    const activeEl = row.children[activeIndex];
+    if (activeEl && activeEl.scrollIntoView) {
+      activeEl.scrollIntoView({ behavior: shouldReduce ? 'auto' : 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeIndex, shouldReduce]);
 
   if (galleryImages.length === 0) {
     return (
@@ -53,26 +83,39 @@ function ProductGallery({ images, productName }) {
   }
 
   return (
-    <div>
+    <div style={{ width: '100%' }}>
       {/* Main Image */}
-      <div
+      <motion.div
+        className="gallery-main-image"
         style={{
           position: 'relative',
-          borderRadius: '14px',
+          borderRadius: 'clamp(10px, 1.5vw, 14px)',
           overflow: 'hidden',
           background: '#FEF4EC',
           aspectRatio: '1',
+          width: '100%',
+          touchAction: galleryImages.length > 1 ? 'pan-y' : 'auto',
+        }}
+        drag={galleryImages.length > 1 ? 'x' : false}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.18}
+        onDragEnd={(_, info) => {
+          if (info.offset.x < -60) goTo(activeIndex + 1);
+          else if (info.offset.x > 60) goTo(activeIndex - 1);
         }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.img
             key={activeIndex}
             src={galleryImages[activeIndex]}
             alt={`${productName} — image ${activeIndex + 1}`}
-            initial={shouldReduce ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={shouldReduce ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
+            custom={direction}
+            variants={shouldReduce ? { enter: { opacity: 0 }, center: { opacity: 1 }, exit: { opacity: 0 } } : gallerySlideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.38, ease: [0.4, 0, 0.2, 1] }}
+            draggable={false}
             style={{
               width: '100%',
               height: '100%',
@@ -82,65 +125,171 @@ function ProductGallery({ images, productName }) {
               position: 'absolute',
               top: 0,
               left: 0,
+              pointerEvents: 'none',
             }}
           />
         </AnimatePresence>
-      </div>
 
-      {/* Thumbnails */}
+        {/* Prev / Next arrows — desktop hover navigation for multi-image galleries */}
+        {galleryImages.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={() => goTo(activeIndex - 1)}
+              className="gallery-nav-arrow gallery-nav-arrow--prev"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: 'clamp(8px, 2vw, 14px)',
+                transform: 'translateY(-50%)',
+                width: 'clamp(30px, 4vw, 38px)',
+                height: 'clamp(30px, 4vw, 38px)',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(255, 255, 255, 0.85)',
+                color: '#3D2B1F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+                transition: 'opacity 0.2s ease, background 0.2s ease, transform 0.2s ease',
+              }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={() => goTo(activeIndex + 1)}
+              className="gallery-nav-arrow gallery-nav-arrow--next"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                right: 'clamp(8px, 2vw, 14px)',
+                transform: 'translateY(-50%)',
+                width: 'clamp(30px, 4vw, 38px)',
+                height: 'clamp(30px, 4vw, 38px)',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(255, 255, 255, 0.85)',
+                color: '#3D2B1F',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+                transition: 'opacity 0.2s ease, background 0.2s ease, transform 0.2s ease',
+              }}
+            >
+              <ChevronRight size={18} />
+            </button>
+
+            {/* Image counter pill */}
+            <div style={{
+              position: 'absolute',
+              bottom: 'clamp(8px, 2vw, 14px)',
+              right: 'clamp(8px, 2vw, 14px)',
+              background: 'rgba(28, 16, 7, 0.55)',
+              color: '#fff',
+              fontFamily: "'Be Vietnam Pro', sans-serif",
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '4px 10px',
+              borderRadius: '20px',
+              letterSpacing: '0.02em',
+            }}>
+              {activeIndex + 1} / {galleryImages.length}
+            </div>
+          </>
+        )}
+      </motion.div>
+
+      {/* Thumbnails — horizontally scrollable strip, fits every screen size */}
       {showThumbnails && (
         <div
+          ref={thumbRowRef}
+          className="gallery-thumb-row"
           style={{
             display: 'flex',
-            gap: '10px',
-            marginTop: '14px',
-            flexWrap: 'wrap',
+            gap: 'clamp(8px, 1.5vw, 12px)',
+            marginTop: 'clamp(10px, 1.8vw, 14px)',
+            overflowX: 'auto',
+            scrollSnapType: 'x proximity',
+            paddingBottom: '4px',
           }}
           role="tablist"
           aria-label="Product image thumbnails"
         >
-          {galleryImages.map((img, i) => (
-            <button
-              key={i}
-              role="tab"
-              aria-selected={i === activeIndex}
-              aria-label={`View image ${i + 1}`}
-              onClick={() => setActiveIndex(i)}
-              style={{
-                width: '68px',
-                height: '68px',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                border: i === activeIndex
-                  ? '2.5px solid #B22222'
-                  : '2px solid rgba(93, 64, 55, 0.15)',
-                cursor: 'pointer',
-                padding: 0,
-                background: '#FEF4EC',
-                transition: 'border-color 0.2s ease',
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => {
-                if (i !== activeIndex) e.currentTarget.style.borderColor = 'rgba(178, 34, 34, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                if (i !== activeIndex) e.currentTarget.style.borderColor = 'rgba(93, 64, 55, 0.15)';
-              }}
-            >
-              <img
-                src={img}
-                alt={`${productName} thumbnail ${i + 1}`}
+          {galleryImages.map((img, i) => {
+            const isActive = i === activeIndex;
+            return (
+              <motion.button
+                key={i}
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`View image ${i + 1}`}
+                onClick={() => goTo(i)}
+                initial={shouldReduce ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: shouldReduce ? 0 : i * 0.05, ease: 'easeOut' }}
+                whileHover={shouldReduce ? undefined : { scale: 1.06 }}
+                whileTap={shouldReduce ? undefined : { scale: 0.94 }}
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
+                  width: 'clamp(52px, 12vw, 70px)',
+                  height: 'clamp(52px, 12vw, 70px)',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  border: isActive ? '2.5px solid #B22222' : '2px solid rgba(93, 64, 55, 0.15)',
+                  cursor: 'pointer',
+                  padding: 0,
+                  background: '#FEF4EC',
+                  flexShrink: 0,
+                  scrollSnapAlign: 'start',
                 }}
-              />
-            </button>
-          ))}
+              >
+                <img
+                  src={img}
+                  alt={`${productName} thumbnail ${i + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                  draggable={false}
+                />
+              </motion.button>
+            );
+          })}
         </div>
       )}
+
+      {/* Hide scrollbar on the thumbnail strip while keeping it scrollable/swipeable */}
+      <style>{`
+        .gallery-thumb-row {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .gallery-thumb-row::-webkit-scrollbar {
+          display: none;
+        }
+        .gallery-nav-arrow {
+          opacity: 0;
+        }
+        @media (hover: none) {
+          .gallery-nav-arrow {
+            opacity: 1;
+          }
+        }
+        .gallery-main-image:hover .gallery-nav-arrow {
+          opacity: 1;
+        }
+        .gallery-nav-arrow:hover {
+          background: #fff;
+        }
+      `}</style>
     </div>
   );
 }
@@ -385,6 +534,100 @@ function MaaTipSection({ tip }) {
 }
 
 // ================================================================
+// PRODUCT LOADING
+// ================================================================
+function ProductLoading() {
+  return (
+    <div style={{
+      paddingTop: 'clamp(100px, 12vw, 140px)',
+      paddingBottom: '80px',
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '12px',
+      color: '#7A5C4A',
+      fontFamily: "'Be Vietnam Pro', sans-serif",
+      fontSize: '15px',
+    }}>
+      <div style={{
+        width: '32px',
+        height: '32px',
+        border: '3px solid rgba(178, 34, 34, 0.15)',
+        borderTopColor: '#B22222',
+        borderRadius: '50%',
+        animation: 'product-detail-spin 0.7s linear infinite',
+      }} />
+      Loading premix…
+      <style>{`
+        @keyframes product-detail-spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
+}
+
+// ================================================================
+// PRODUCT LOAD ERROR — genuine fetch/query failure, distinct from "not found"
+// ================================================================
+function ProductLoadError({ onRetry }) {
+  return (
+    <div style={{
+      paddingTop: 'clamp(100px, 12vw, 140px)',
+      paddingBottom: '80px',
+      textAlign: 'center',
+      minHeight: '60vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '16px',
+    }}>
+      <h1 style={{
+        fontFamily: "'Literata', Georgia, serif",
+        fontSize: 'clamp(1.4rem, 3vw, 2rem)',
+        fontWeight: 500,
+        color: '#1C1007',
+      }}>
+        Couldn't load this premix
+      </h1>
+      <p style={{
+        fontFamily: "'Be Vietnam Pro', sans-serif",
+        fontSize: '15px',
+        color: '#7A5C4A',
+        maxWidth: '360px',
+        lineHeight: 1.6,
+      }}>
+        Something went wrong while fetching the product. Please try again.
+      </p>
+      <button
+        onClick={onRetry}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontFamily: "'Be Vietnam Pro', sans-serif",
+          fontSize: '14px',
+          fontWeight: 600,
+          color: '#fff',
+          background: '#B22222',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          marginTop: '8px',
+          transition: 'background 0.18s',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = '#8B1A1A')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = '#B22222')}
+      >
+        Try Again
+      </button>
+    </div>
+  );
+}
+
+// ================================================================
 // PRODUCT NOT FOUND
 // ================================================================
 function ProductNotFound() {
@@ -459,7 +702,7 @@ export default function ProductDetailPage({ cartItems = [], onAddToCartRaw, onUp
   const [showAdded, setShowAdded] = useState(false);
   const [localQty, setLocalQty] = useState(0);
 
-  const product = useMemo(() => findProductBySlug(slug), [slug]);
+  const { product, loading, error, refetch } = useProductBySlug(slug);
 
   // Look up cart quantity for this product
   const cartQty = useMemo(() => {
@@ -476,13 +719,15 @@ export default function ProductDetailPage({ cartItems = [], onAddToCartRaw, onUp
 
   // Set dynamic page title
   useEffect(() => {
-    if (product) {
+    if (loading) {
+      document.title = 'ANNAPURNA | Loading…';
+    } else if (product) {
       document.title = `ANNAPURNA | ${product.name}`;
     } else {
       document.title = 'ANNAPURNA | Product Not Found';
     }
     return () => { document.title = 'ANNAPURNA'; };
-  }, [product]);
+  }, [product, loading]);
 
   // Handlers
   const handleDecrement = () => {
@@ -517,6 +762,8 @@ export default function ProductDetailPage({ cartItems = [], onAddToCartRaw, onUp
     setTimeout(() => setShowAdded(false), 2000);
   };
 
+  if (loading) return <ProductLoading />;
+  if (error) return <ProductLoadError onRetry={refetch} />;
   if (!product) return <ProductNotFound />;
 
   return (

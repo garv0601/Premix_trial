@@ -1,5 +1,5 @@
 // Must be the first import — populates process.env before any other module
-// (config/razorpay.js, config/supabase.js, config/config.js) reads it at import time.
+// (config/cashfree.js, config/supabase.js, config/config.js) reads it at import time.
 import './config/env.js';
 
 import express from 'express';
@@ -19,7 +19,12 @@ const app = express();
 
 // Middlewares
 app.use(cors({ origin: config.corsOrigin }));
-app.use(express.json());
+// Capture the exact raw request body alongside the parsed JSON body — the
+// Cashfree webhook signature is computed over the raw (unparsed) payload,
+// so req.rawBody is needed purely for that verification step.
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 app.use(logger);
 
 // Routes

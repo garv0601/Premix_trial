@@ -55,7 +55,7 @@ export default function Hero({ onExploreClick }) {
           variants={shouldReduce ? {} : staggerContainer}
           initial="hidden"
           animate="visible"
-          style={{ maxWidth: '580px' }}
+          style={{ maxWidth: '580px', minWidth: 0 }}
         >
           {/* Eyebrow */}
           <motion.p
@@ -192,6 +192,7 @@ export default function Hero({ onExploreClick }) {
             position: 'relative',
             display: 'flex',
             justifyContent: 'center',
+            minWidth: 0,
           }}
           id="hero-image-col"
         >

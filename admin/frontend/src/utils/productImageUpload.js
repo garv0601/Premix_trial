@@ -94,6 +94,31 @@ export async function uploadProductImage(file, folderId) {
 }
 
 /**
+ * Upload multiple validated image files to Supabase Storage, preserving order.
+ * `folderId` should be the product id (Edit) or a temporary unique id (Add).
+ *
+ * Uploads sequentially so a single failure can be attributed to the right
+ * file, and any files uploaded before the failure are still returned so the
+ * caller can decide whether to keep or roll them back.
+ *
+ * Returns { uploaded, error, failedIndex } where `uploaded` is the list of
+ * { publicUrl, path } for files that succeeded, in the same order as input.
+ */
+export async function uploadProductImages(files, folderId) {
+  const uploaded = [];
+  for (let i = 0; i < files.length; i += 1) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await uploadProductImage(files[i], folderId);
+      uploaded.push(result);
+    } catch (err) {
+      return { uploaded, error: err, failedIndex: i };
+    }
+  }
+  return { uploaded, error: null, failedIndex: -1 };
+}
+
+/**
  * Best-effort delete of a storage object by its storage path.
  * Never throws — cleanup failures should not block the admin UI.
  */

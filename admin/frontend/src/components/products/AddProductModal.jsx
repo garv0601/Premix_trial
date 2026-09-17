@@ -1,13 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ImagePlus, CheckCircle2, FileImage } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
 import './ProductFormModal.css';
+import ProductGalleryEditor from './ProductGalleryEditor';
 import {
-  validateProductImageFile,
-  uploadProductImage,
+  uploadProductImages,
   deleteProductImageByPath,
   generateUploadFolderId,
-  ALLOWED_IMAGE_HINT,
 } from '../../utils/productImageUpload';
 
 const overlayVariants = {
@@ -48,19 +47,20 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
   const [submitError, setSubmitError] = useState(null);
   const [errors, setErrors] = useState({});
 
-  // Gallery upload state — an uploaded file always takes priority over the Image URL field.
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [imageError, setImageError] = useState(null);
+  // Multi-image gallery — see ProductGalleryEditor. Items with a `file` are
+  // pending uploads; items without are plain URLs (typed or already saved).
+  const [galleryItems, setGalleryItems] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const fileInputRef = useRef(null);
 
-  // Revoke the object URL preview when it changes or the modal unmounts, to avoid leaks.
+  // Revoke any pending-upload object URL previews when the modal unmounts.
   useEffect(() => {
     return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      galleryItems.forEach((item) => {
+        if (item.file && item.url) URL.revokeObjectURL(item.url);
+      });
     };
-  }, [imagePreview]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -70,34 +70,22 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
     if (submitError) setSubmitError(null);
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file later
-    if (!file) return;
-
-    const { valid, error } = validateProductImageFile(file);
-    if (!valid) {
-      setImageError(error);
-      return;
-    }
-
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    setImageError(null);
+  const handleGalleryChange = (nextItems) => {
+    setGalleryItems(nextItems);
     if (submitError) setSubmitError(null);
   };
 
-  const handleRemoveImage = () => {
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
-    setImageFile(null);
-    setImagePreview(null);
-    setImageError(null);
+  const resetGallery = () => {
+    galleryItems.forEach((item) => {
+      if (item.file && item.url) URL.revokeObjectURL(item.url);
+    });
+    setGalleryItems([]);
   };
 
   const handleToggle = (field) => {
     setForm((prev) => ({ ...prev, [field]: !prev[field] }));
   };
+
 
   const validate = () => {
     const newErrors = {};
@@ -121,30 +109,43 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
 
     setSubmitting(true);
 
-    // Gallery upload takes priority over the Image URL field. Upload first
-    // so we never create a product referencing a broken/incomplete image.
-    let finalImageUrl = form.image_url || '';
-    let uploadedPath = null;
+    // Upload any pending files first (in gallery order) so we never create a
+    // product referencing a broken/incomplete image. Items without a `file`
+    // are already-usable URLs (typed by the admin) and pass through as-is.
+    const pendingFiles = galleryItems.filter((item) => item.file);
+    let uploadedPaths = [];
+    let finalImages = galleryItems.map((item) => item.url);
 
-    if (imageFile) {
+    if (pendingFiles.length > 0) {
       setUploadingImage(true);
-      try {
-        const folderId = generateUploadFolderId();
-        const { publicUrl, path } = await uploadProductImage(imageFile, folderId);
-        finalImageUrl = publicUrl;
-        uploadedPath = path;
-      } catch (err) {
-        setUploadingImage(false);
+      const folderId = generateUploadFolderId();
+      const { uploaded, error: uploadErr } = await uploadProductImages(
+        pendingFiles.map((item) => item.file),
+        folderId
+      );
+      setUploadingImage(false);
+
+      if (uploadErr) {
+        // Roll back anything that did upload before the failure.
+        uploaded.forEach(({ path }) => deleteProductImageByPath(path));
         setSubmitting(false);
-        setSubmitError(err.message || 'Unable to upload image. Please try again.');
+        setSubmitError(uploadErr.message || 'Unable to upload one of the images. Please try again.');
         return;
       }
-      setUploadingImage(false);
+
+      uploadedPaths = uploaded.map((u) => u.path);
+      // Splice uploaded public URLs back into gallery order, replacing each
+      // pending item's temporary object URL with its real storage URL.
+      let uploadIdx = 0;
+      finalImages = galleryItems.map((item) => (item.file ? uploaded[uploadIdx++].publicUrl : item.url));
     }
+
+    const finalImageUrl = finalImages[0] || '';
 
     const result = await onSubmit({
       ...form,
       image_url: finalImageUrl,
+      images: finalImages,
       price: parseFloat(form.price) || 0,
       compare_at_price: form.compare_at_price ? parseFloat(form.compare_at_price) : null,
       stock_quantity: parseInt(form.stock_quantity, 10) || 0,
@@ -153,9 +154,9 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
       category_id: form.category_id || null,
     });
 
-    // The product wasn't created — don't leave an orphaned upload behind.
-    if (!result?.success && uploadedPath) {
-      deleteProductImageByPath(uploadedPath);
+    // The product wasn't created — don't leave orphaned uploads behind.
+    if (!result?.success && uploadedPaths.length > 0) {
+      uploadedPaths.forEach((path) => deleteProductImageByPath(path));
     }
 
     setSubmitting(false);
@@ -165,7 +166,7 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
       setTimeout(() => {
         setSaveSuccess(false);
         setForm({ ...INITIAL_FORM });
-        handleRemoveImage();
+        resetGallery();
         onClose();
       }, 1500);
     } else {
@@ -178,7 +179,7 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
     setErrors({});
     setSubmitError(null);
     setSaveSuccess(false);
-    handleRemoveImage();
+    resetGallery();
     onClose();
   };
 
@@ -211,65 +212,13 @@ export default function AddProductModal({ isOpen, onClose, onSubmit, categories 
 
             <form className="pfm-form" onSubmit={handleSubmit} noValidate>
               <div className="pfm-scroll-body">
-                {/* Product Image — URL or gallery upload (upload takes priority) */}
-                <div className="pfm-field">
-                  <label className="pfm-label">Product Image</label>
-
-                  <input
-                    className="pfm-input"
-                    type="text"
-                    value={form.image_url}
-                    onChange={(e) => handleChange('image_url', e.target.value)}
-                    placeholder="https://example.com/product-image.jpg"
-                    disabled={!!imageFile}
-                  />
-
-                  <div className="pfm-image-divider"><span>OR</span></div>
-
-                  {!imagePreview ? (
-                    <label className="pfm-image-upload" htmlFor="add-product-image-input">
-                      <ImagePlus size={22} />
-                      <span>Upload Image</span>
-                      <p>{ALLOWED_IMAGE_HINT}</p>
-                    </label>
-                  ) : (
-                    <div className="pfm-image-preview">
-                      <img src={imagePreview} alt="Selected product preview" className="pfm-image-preview-img" />
-                      <div className="pfm-image-preview-info">
-                        <span className="pfm-image-preview-name">
-                          <FileImage size={14} /> {imageFile?.name}
-                        </span>
-                        <div className="pfm-image-preview-actions">
-                          <button
-                            type="button"
-                            className="pfm-image-change-btn"
-                            onClick={() => fileInputRef.current?.click()}
-                          >
-                            Change Image
-                          </button>
-                          <button type="button" className="pfm-image-remove-btn" onClick={handleRemoveImage}>
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <input
-                    ref={fileInputRef}
-                    id="add-product-image-input"
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={handleFileSelect}
-                    style={{ display: 'none' }}
-                  />
-
-                  {imageError && <span className="pfm-error-text">{imageError}</span>}
-                  {imageFile && form.image_url && !imageError && (
-                    <p className="pfm-image-priority-note">The uploaded image will be used instead of the Image URL above.</p>
-                  )}
-                  {uploadingImage && <p className="pfm-image-uploading-note">Uploading image...</p>}
-                </div>
+                {/* Product Gallery — multiple images, first = cover/front image */}
+                <ProductGalleryEditor
+                  items={galleryItems}
+                  onChange={handleGalleryChange}
+                  disabled={submitting || uploadingImage}
+                />
+                {uploadingImage && <p className="pfm-image-uploading-note">Uploading images...</p>}
 
                 <div className="pfm-field-row">
                   <div className="pfm-field">

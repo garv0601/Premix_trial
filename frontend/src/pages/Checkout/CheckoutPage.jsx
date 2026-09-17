@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Plus, MapPin, Truck, CreditCard, CheckCircle, Package, Zap, Lightbulb, Wallet, Banknote } from 'lucide-react';
+import { Lock, Plus, MapPin, Truck, CreditCard, CheckCircle, Package, Zap, Lightbulb, Wallet, Banknote, Edit2 } from 'lucide-react';
+import { load as loadCashfreeSdk } from '@cashfreepayments/cashfree-js';
 import { useAuth } from '../../hooks/useAuth';
-import { getAddresses, addAddress } from '../../services/addressService';
+import { getAddresses, addAddress, updateAddress } from '../../services/addressService';
 import { getPaymentMethods } from '../../services/paymentService';
-import { placeOrder, createRazorpayOrder } from '../../services/orderService';
+import { placeOrder, createCashfreeOrder } from '../../services/orderService';
 import AddressForm from '../../components/addresses/AddressForm';
 import supabase from '../../lib/supabase';
 import { calculateShippingCharge, calculateOrderTotal } from '../../utils/pricing';
@@ -35,6 +36,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null);
   const [error, setError] = useState(null);
 
   /* ── Step state (1 = address, 2 = delivery, 3 = payment) ── */
@@ -59,6 +61,9 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
   const step2Ref = useRef(null);
   const step3Ref = useRef(null);
   const stepRefs = { 1: step1Ref, 2: step2Ref, 3: step3Ref };
+
+  /* ── Cached Cashfree SDK instance (loaded lazily, once) ── */
+  const cashfreeInstanceRef = useRef(null);
 
   // Cart calculations — same shipping rule + total formula as the Cart page,
   // so both pages always show identical numbers for the same cart/coupon state.
@@ -141,18 +146,31 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
 
   const handleSaveAddress = async (formData) => {
     try {
-      const newAddress = await addAddress(user.id, formData);
-      
-      // If the new address is set as default, we might need to update others, 
+      const savedAddress = editingAddress
+        ? await updateAddress(user.id, editingAddress.id, formData)
+        : await addAddress(user.id, formData);
+
+      // If the new/updated address is set as default, we might need to update others, 
       // but for this task we just refetch the list
       await fetchAddresses(); 
-      setSelectedAddressId(newAddress.id);
+      setSelectedAddressId(savedAddress.id);
       setShowAddressForm(false);
+      setEditingAddress(null);
       setError(null);
     } catch (err) {
       console.error('Error saving address:', err);
-      alert('Failed to save address. Please try again.');
+      alert(editingAddress ? 'Failed to update address. Please try again.' : 'Failed to save address. Please try again.');
     }
+  };
+
+  const handleEditAddress = (address) => {
+    setEditingAddress(address);
+    setShowAddressForm(true);
+  };
+
+  const handleCancelAddressForm = () => {
+    setShowAddressForm(false);
+    setEditingAddress(null);
   };
 
   /* ── Smooth-scroll to a step section once its open/collapse animation has
@@ -210,19 +228,16 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
     setTimeout(() => scrollToStep(next), STEP_ANIMATION_MS);
   };
 
-  /* ── Razorpay Payment Handler ── */
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
+  /* ── Cashfree Payment Handler ── */
+  // Lazily loads (and caches) the Cashfree Checkout SDK instance.
+  // mode: 'sandbox' (TEST/SANDBOX, default) or 'production' — controlled via
+  // VITE_CASHFREE_MODE, never a secret, safe to expose in the frontend.
+  const getCashfreeInstance = async () => {
+    if (cashfreeInstanceRef.current) return cashfreeInstanceRef.current;
+    const mode = import.meta.env.VITE_CASHFREE_MODE || 'sandbox';
+    const instance = await loadCashfreeSdk({ mode });
+    cashfreeInstanceRef.current = instance;
+    return instance;
   };
 
   // Supabase's query builder is thenable but has no .catch(); wrap in try/catch
@@ -316,102 +331,47 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
       return;
     }
 
-    // ── ONLINE PAYMENT (Razorpay) FLOW ────────────────────────────────────────
-    const scriptLoaded = await loadRazorpayScript();
-    if (!scriptLoaded) {
+    // ── ONLINE PAYMENT (Cashfree) FLOW ────────────────────────────────────────
+    let cashfree;
+    try {
+      cashfree = await getCashfreeInstance();
+    } catch (err) {
+      console.error('[Checkout] Failed to load Cashfree SDK:', err);
+    }
+    if (!cashfree) {
       setError('Failed to load payment gateway. Please check your internet connection.');
       await releaseReservation(sessionId);
       setIsProcessingPayment(false);
       return;
     }
 
-    // Create Razorpay order on the backend (server calculates the real amount)
-    let rzpOrderData;
+    // Create the Cashfree order on the backend (server calculates the real amount)
+    let cfOrderData;
     try {
-      const rzpResult = await createRazorpayOrder(total);
-      rzpOrderData = rzpResult.order;
+      const cfResult = await createCashfreeOrder(total, {
+        customerName:  selectedAddress?.fullName || user?.user_metadata?.full_name || undefined,
+        customerPhone: selectedAddress?.phone || undefined,
+      });
+      cfOrderData = cfResult.order;
     } catch (err) {
-      console.error('[Checkout] Razorpay order creation failed:', err);
+      console.error('[Checkout] Cashfree order creation failed:', err);
       setError(err.message || 'Could not initiate payment. Please try again.');
       await releaseReservation(sessionId);
       setIsProcessingPayment(false);
       return;
     }
 
-    const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_placeholder';
-
-    const options = {
-      key:      rzpKey,
-      amount:   rzpOrderData.amount,      // amount in paise (set by server)
-      currency: rzpOrderData.currency || 'INR',
-      order_id: rzpOrderData.id,          // Razorpay order ID
-      name:     'ANNAPURNA',
-      description: `Order for ${cartItems.length} item${cartItems.length > 1 ? 's' : ''}`,
-      image:    '/logo.png',
-      prefill: {
-        name:    selectedAddress?.fullName || user?.user_metadata?.full_name || '',
-        email:   user?.email || '',
-        contact: selectedAddress?.phone || '',
-      },
-      theme: {
-        color:          '#B22222',
-        backdrop_color: 'rgba(28, 16, 7, 0.5)',
-      },
-      modal: {
-        ondismiss: async () => {
-          console.log('[Checkout] Razorpay modal closed — releasing reservation...');
-          await releaseReservation(sessionId);
-          setIsProcessingPayment(false);
-        },
-      },
-      handler: async (response) => {
-        // Payment succeeded in Razorpay — now confirm with backend
-        // Backend will verify the Razorpay signature before creating the order
-        console.log('[Checkout] Razorpay payment received — confirming with backend...');
-        try {
-          const result = await placeOrder({
-            ...baseOrderPayload,
-            razorpayOrderId:   response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-          });
-
-          // Payment verified & order confirmed — safe to clear the cart now.
-          clearCart?.();
-          coupon?.removeCoupon();
-          setIsProcessingPayment(false);
-          navigate(`/order-success/${result.order.id}`, {
-            state: {
-              paymentMethod,
-              deliveryMethod,
-            }
-          });
-        } catch (err) {
-          console.error('[Checkout] Order confirmation failed after payment:', err);
-          setError(
-            "Payment received, but we couldn't complete your order confirmation. " +
-            "Please don't make another payment — we're checking your order. " +
-            'Reference: ' + response.razorpay_payment_id
-          );
-          setIsProcessingPayment(false);
-        }
-      },
-      method: paymentMethod === 'upi'
-        ? { upi: true, card: false, netbanking: false, wallet: false }
-        : { card: true, upi: false, netbanking: false, wallet: false },
-    };
-
-    // Mock flow when Razorpay key is a placeholder
-    if (rzpKey === 'rzp_test_placeholder' || rzpOrderData.mock) {
-      console.log('[Checkout] Mock payment flow — confirming directly with backend...');
+    // Confirms the order with the backend, which independently re-verifies
+    // the actual Cashfree payment status before ever marking anything as paid
+    // — a completed checkout() promise alone is never trusted as proof of payment.
+    const confirmCashfreeOrder = async (cashfreeOrderId) => {
       try {
-        const mockPaymentId = 'pay_mock_' + Math.random().toString(36).substr(2, 12);
         const result = await placeOrder({
           ...baseOrderPayload,
-          razorpayPaymentId: mockPaymentId,
+          cashfreeOrderId,
         });
 
-        // Order confirmed (mock gateway) — safe to clear the cart now.
+        // Payment verified & order confirmed — safe to clear the cart now.
         clearCart?.();
         coupon?.removeCoupon();
         setIsProcessingPayment(false);
@@ -422,19 +382,47 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
           }
         });
       } catch (err) {
-        console.error('[Checkout] Mock order failed:', err);
-        setError(err.message || 'Order placement failed. Please try again.');
-        await releaseReservation(sessionId);
+        console.error('[Checkout] Order confirmation failed after payment:', err);
+        setError(
+          "Payment received, but we couldn't complete your order confirmation. " +
+          "Please don't make another payment — we're checking your order. " +
+          'Reference: ' + cashfreeOrderId
+        );
         setIsProcessingPayment(false);
       }
+    };
+
+    // Mock flow when Cashfree isn't configured on the backend (dev only)
+    if (cfOrderData.mock) {
+      console.log('[Checkout] Mock payment flow — confirming directly with backend...');
+      await confirmCashfreeOrder(cfOrderData.order_id);
       return;
     }
 
     try {
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      const result = await cashfree.checkout({
+        paymentSessionId: cfOrderData.payment_session_id,
+        redirectTarget:   '_modal',
+      });
+
+      if (result.paymentDetails) {
+        // Payment attempt completed (irrespective of outcome) — the backend
+        // verifies the real status with Cashfree before confirming the order.
+        console.log('[Checkout] Cashfree payment attempt completed — confirming with backend...');
+        await confirmCashfreeOrder(cfOrderData.order_id);
+      } else if (result.redirect) {
+        // Exceptional case (e.g. in-app browser) — Cashfree will redirect the
+        // customer to the return URL once the payment completes.
+        console.log('[Checkout] Cashfree payment will redirect...');
+      } else {
+        // result.error — the customer closed the checkout popup, or an error
+        // occurred before any payment attempt completed.
+        console.log('[Checkout] Cashfree checkout closed — releasing reservation...');
+        await releaseReservation(sessionId);
+        setIsProcessingPayment(false);
+      }
     } catch (err) {
-      console.error('[Checkout] Razorpay error:', err);
+      console.error('[Checkout] Cashfree checkout error:', err);
       setError('Payment could not be initiated. Please try again.');
       await releaseReservation(sessionId);
       setIsProcessingPayment(false);
@@ -520,8 +508,9 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                   ) : showAddressForm ? (
                     <div className="address-form-wrapper">
                       <AddressForm 
+                        initialData={editingAddress}
                         onSave={handleSaveAddress} 
-                        onCancel={() => setShowAddressForm(false)} 
+                        onCancel={handleCancelAddressForm} 
                       />
                     </div>
                   ) : (
@@ -532,7 +521,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                           <p>Add an address to continue.</p>
                           <button 
                             className="add-address-btn"
-                            onClick={() => setShowAddressForm(true)}
+                            onClick={() => { setEditingAddress(null); setShowAddressForm(true); }}
                           >
                             <Plus size={16} /> Add New Address
                           </button>
@@ -549,8 +538,23 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                               }}
                             >
                               {selectedAddressId === address.id && (
-                                <div className="address-check">
-                                  <CheckCircle size={18} />
+                                <div className="address-card-top-actions">
+                                  <button
+                                    type="button"
+                                    className="address-edit-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditAddress(address);
+                                    }}
+                                    aria-label="Edit this address"
+                                    title="Edit address"
+                                  >
+                                    <Edit2 size={13} />
+                                    <span>Edit</span>
+                                  </button>
+                                  <div className="address-check">
+                                    <CheckCircle size={18} />
+                                  </div>
                                 </div>
                               )}
                               <div className="address-label-badge">{address.label || 'Home'}</div>
@@ -564,7 +568,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                           
                           <button 
                             className="add-address-btn secondary"
-                            onClick={() => setShowAddressForm(true)}
+                            onClick={() => { setEditingAddress(null); setShowAddressForm(true); }}
                           >
                             <Plus size={16} /> Add New Address
                           </button>
@@ -832,7 +836,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                             ))
                           ) : (
                             <div className="no-saved-cards">
-                              <p>No saved cards. Razorpay will securely collect your card details.</p>
+                              <p>No saved cards. Cashfree will securely collect your card details.</p>
                             </div>
                           )}
 

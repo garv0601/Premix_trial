@@ -272,11 +272,46 @@
   border-color: #F6B800; /* Yellow accent */
 }
 
-.address-check {
+.address-card-top-actions {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.address-check {
   color: #F6B800;
+  display: flex;
+  align-items: center;
+}
+
+.address-edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #FFFFFF;
+  border: 1px solid rgba(93, 64, 55, 0.2);
+  border-radius: 20px;
+  padding: 5px 10px;
+  color: #B22222;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+  transition: background-color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.address-edit-btn:hover {
+  background-color: #FDECEA;
+  border-color: rgba(178, 34, 34, 0.35);
+}
+
+.address-edit-btn:focus-visible {
+  outline: 2px solid #B22222;
+  outline-offset: 2px;
 }
 
 .address-label-badge {

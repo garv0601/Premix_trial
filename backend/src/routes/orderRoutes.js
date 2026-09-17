@@ -2,7 +2,8 @@
  * ANNAPURNA Backend — Order Routes
  *
  * Customer routes:
- *   POST /api/orders/create-razorpay-order  — Create Razorpay order
+ *   POST /api/orders/create-cashfree-order  — Create Cashfree order (payment session)
+ *   POST /api/orders/cashfree-webhook       — Cashfree server-to-server webhook (public, signature-verified)
  *   POST /api/orders                        — Place order (after payment)
  *   GET  /api/orders                        — Get my orders
  *   GET  /api/orders/:orderId               — Get single order
@@ -15,7 +16,8 @@
 
 import { Router } from 'express';
 import {
-  createRazorpayOrder,
+  createCashfreeOrder,
+  cashfreeWebhook,
   placeOrder,
   getMyOrders,
   getMyOrder,
@@ -33,7 +35,8 @@ export const orderRouter      = Router();
 export const adminOrderRouter = Router();
 
 // ── Customer routes ──────────────────────────────────────────────────────────
-orderRouter.post('/create-razorpay-order', createRazorpayOrder);
+orderRouter.post('/create-cashfree-order', createCashfreeOrder);
+orderRouter.post('/cashfree-webhook',      cashfreeWebhook);
 orderRouter.post('/',                      placeOrder);
 orderRouter.get('/',                       getMyOrders);
 orderRouter.get('/:orderId',               getMyOrder);

@@ -32,7 +32,7 @@ Annapurna-Premix/
 | **Admin Panel** | React 18, Vite |
 | **Backend** | Node.js, Express 4, ES Modules |
 | **Database & Auth** | Supabase (PostgreSQL + RLS + Auth) |
-| **Payments** | Razorpay |
+| **Payments** | Cashfree Payment Gateway |
 | **Styling** | Vanilla CSS (dark theme, glassmorphism) |
 
 ---
@@ -66,7 +66,7 @@ Annapurna-Premix/
 - **Home** — Hero, FeaturedProducts, HowItWorks, PremixExplanation, ReviewsPreview, ShopCTA, StoryPreview, WhyAnnapurna
 - **Product** — ProductCard, ProductGrid, ProductFilter, ProductDetailModal
 - **Cart** — CartDrawer (slide-out), CartPage
-- **Checkout** — CheckoutPage with Razorpay integration, OrderSuccessPage
+- **Checkout** — CheckoutPage with Cashfree Payment Gateway integration, OrderSuccessPage
 - **Orders** — OrderCard, OrderItem, OrderStatusBadge, OrderSummary
 - **Reviews** — ReviewCard, ReviewForm, ReviewList
 - **Account** — ProfileCard, AccountSidebar, RecentOrders, QuickActions, MaasTip, AssistanceCard
@@ -109,7 +109,7 @@ backend/src/
 ├── config/
 │   ├── config.js       # Environment config
 │   ├── supabase.js     # Supabase admin client (service-role, server-side only)
-│   └── razorpay.js     # Razorpay instance
+│   └── cashfree.js      # Cashfree Payment Gateway client
 ├── controllers/        # Request handlers (product, order, review, contact)
 ├── routes/             # Express route definitions
 ├── models/             # Data layer (Supabase queries)
@@ -172,7 +172,7 @@ admin/frontend/src/services/
 | `categories` | Product categories |
 | `orders` | Customer orders |
 | `order_items` | Line items (purchase-time price snapshot) |
-| `payments` | Razorpay payment records |
+| `payments` | Cashfree payment records |
 | `reviews` | Customer reviews (requires approval) |
 | `coupons` | Discount codes |
 | `coupon_usage` | Per-order coupon tracking |
@@ -189,7 +189,7 @@ admin/frontend/src/services/
 
 - Node.js 18+
 - A [Supabase](https://supabase.com) project
-- A [Razorpay](https://razorpay.com) account (for payments)
+- A [Cashfree](https://www.cashfree.com) merchant account (for payments, TEST/SANDBOX mode)
 
 ---
 
@@ -205,8 +205,9 @@ Create `backend/.env`:
 ```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-RAZORPAY_KEY_ID=your-razorpay-key
-RAZORPAY_KEY_SECRET=your-razorpay-secret
+CASHFREE_APP_ID=your-cashfree-app-id
+CASHFREE_SECRET_KEY=your-cashfree-secret-key
+CASHFREE_ENV=SANDBOX
 PORT=5000
 ```
 
@@ -283,7 +284,8 @@ In your Supabase dashboard → **Authentication → Providers**, enable:
 | Product Catalogue & Filtering | ✅ Complete |
 | Cart & CartDrawer | ✅ Complete |
 | Checkout Page | ✅ Complete |
-| Razorpay Payment Integration | ✅ Complete |
+| Razorpay Payment Integration | ❌ Removed |
+| Cashfree Payment Integration | ✅ Complete (TEST/SANDBOX) |
 | Order Creation (server-side) | ✅ Complete |
 | Inventory Management (atomic RPC) | ✅ Complete |
 | Order History (My Orders) | ✅ Complete |

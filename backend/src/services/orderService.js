@@ -189,7 +189,7 @@ function calculateTotals(validatedItems, coupon, deliveryMethod, paymentMethod) 
  * @param {object}   params.shippingAddress  Address object
  * @param {string}   [params.couponCode]     Optional coupon code
  * @param {string}   [params.sessionId]      Inventory reservation session ID
- * @param {string}   [params.transactionId]  Razorpay payment ID (for online payments)
+ * @param {string}   [params.transactionId]  Cashfree payment ID / cf_payment_id (for online payments)
  * @param {string}   [params.notes]          Customer notes
  */
 export async function createOrder({
@@ -347,7 +347,7 @@ export async function createOrder({
   const paymentPayload = {
     order_id:         order.id,
     customer_id:      customerId,
-    payment_provider: isCOD ? 'cod' : 'razorpay',
+    payment_provider: isCOD ? 'cod' : 'cashfree',
     transaction_id:   transactionId || `COD-${order.id}`,
     amount:           totalAmount,
     currency:         CURRENCY,
@@ -434,6 +434,79 @@ export async function previewCoupon(couponCode, subtotal, customerId) {
     discountValue: coupon.discount_value,
     discountAmount,
   };
+}
+
+/**
+ * Reconcile a payment/order record from a verified Cashfree webhook event.
+ *
+ * IMPORTANT: this only ever UPDATES an existing payments/orders row that was
+ * already created by the primary placeOrder flow — it never creates a new
+ * order. A webhook payload has no cart/address/customer context to create an
+ * order with, and the primary flow already verifies payment status directly
+ * against the Cashfree API before creating the order in the first place.
+ *
+ * Idempotent: repeated/duplicate webhook deliveries for the same terminal
+ * status are safely ignored, and a stale "pending" event can never downgrade
+ * an already-paid or already-refunded record.
+ *
+ * @param {object} params
+ * @param {string} params.transactionId    Cashfree cf_payment_id (matches payments.transaction_id)
+ * @param {string} params.newPaymentStatus One of PAYMENT_STATUS values
+ */
+export async function syncPaymentFromCashfreeWebhook({ transactionId, newPaymentStatus }) {
+  if (!supabaseAdmin) return { updated: false, reason: 'db_not_configured' };
+  if (!transactionId)  return { updated: false, reason: 'missing_transaction_id' };
+
+  const { data: payment, error: fetchError } = await supabaseAdmin
+    .from('payments')
+    .select('id, order_id, payment_status')
+    .eq('transaction_id', transactionId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('[OrderService] Webhook payment lookup error:', fetchError);
+    return { updated: false, reason: 'lookup_failed' };
+  }
+  if (!payment) {
+    // Order not created yet (webhook arrived before the primary flow's
+    // placeOrder call) — nothing to update. The primary flow will create
+    // the order with the correct, already-verified status shortly.
+    return { updated: false, reason: 'no_matching_payment' };
+  }
+  if (payment.payment_status === newPaymentStatus) {
+    return { updated: false, reason: 'already_up_to_date' };
+  }
+
+  // Never let a stale/duplicate "pending" event downgrade a terminal status.
+  const terminalStatuses = [PAYMENT_STATUS.PAID, PAYMENT_STATUS.REFUNDED];
+  if (terminalStatuses.includes(payment.payment_status) && newPaymentStatus === PAYMENT_STATUS.PENDING) {
+    return { updated: false, reason: 'ignored_stale_pending' };
+  }
+
+  const paymentUpdates = { payment_status: newPaymentStatus };
+  if (newPaymentStatus === PAYMENT_STATUS.PAID) paymentUpdates.paid_at = new Date().toISOString();
+
+  const { error: paymentUpdateError } = await supabaseAdmin
+    .from('payments')
+    .update(paymentUpdates)
+    .eq('id', payment.id);
+
+  if (paymentUpdateError) {
+    console.error('[OrderService] Webhook payment update error:', paymentUpdateError);
+    return { updated: false, reason: 'payment_update_failed' };
+  }
+
+  const { error: orderUpdateError } = await supabaseAdmin
+    .from('orders')
+    .update({ payment_status: newPaymentStatus })
+    .eq('id', payment.order_id);
+
+  if (orderUpdateError) {
+    console.error('[OrderService] Webhook order update error:', orderUpdateError);
+    return { updated: false, reason: 'order_update_failed' };
+  }
+
+  return { updated: true, orderId: payment.order_id, paymentStatus: newPaymentStatus };
 }
 
 /**
