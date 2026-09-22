@@ -20,11 +20,13 @@ function QuantityStepper({ qty, onDecrement, onIncrement }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.88 }}
       transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+      className="fp-stepper"
       style={{
         display: 'flex',
         alignItems: 'center',
+        justifyContent: 'space-between',
         gap: '0',
-        borderRadius: '7px',
+        width: '100%',
         border: '1.5px solid #B22222',
         overflow: 'hidden',
         background: '#fff',
@@ -33,12 +35,11 @@ function QuantityStepper({ qty, onDecrement, onIncrement }) {
       <button
         onClick={onDecrement}
         aria-label="Decrease quantity"
+        className="fp-stepper-btn fp-stepper-minus"
         style={{
           background: 'transparent',
           border: 'none',
           color: '#B22222',
-          width: '32px',
-          height: '36px',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -59,6 +60,7 @@ function QuantityStepper({ qty, onDecrement, onIncrement }) {
           fontSize: '13px',
           fontWeight: 700,
           color: '#1C1007',
+          flex: 1,
           minWidth: '20px',
           textAlign: 'center',
           lineHeight: 1,
@@ -72,12 +74,11 @@ function QuantityStepper({ qty, onDecrement, onIncrement }) {
       <button
         onClick={onIncrement}
         aria-label="Increase quantity"
+        className="fp-stepper-btn fp-stepper-plus"
         style={{
           background: '#B22222',
           border: 'none',
           color: '#fff',
-          width: '32px',
-          height: '36px',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -105,6 +106,7 @@ function AddButton({ onClick, productName }) {
       transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
       onClick={onClick}
       aria-label={`Add ${productName} to cart`}
+      className="fp-add-btn"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -113,9 +115,7 @@ function AddButton({ onClick, productName }) {
         background: '#B22222',
         color: '#fff',
         border: 'none',
-        borderRadius: '7px',
-        padding: '8px 16px',
-        height: '36px',
+        width: '100%',
         fontSize: '13px',
         fontWeight: 600,
         fontFamily: "'Be Vietnam Pro', sans-serif",
@@ -404,6 +404,7 @@ function ProductCard({ product, cartQty, onAdd, onIncrement, onDecrement }) {
           </p>
           <Link to={`/product/${product.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
             <h3
+              className="fp-name"
               style={{
                 fontFamily: "'Literata', Georgia, serif",
                 fontSize: 'clamp(14px, 2vw, 16px)',
@@ -418,6 +419,7 @@ function ProductCard({ product, cartQty, onAdd, onIncrement, onDecrement }) {
             </h3>
           </Link>
           <p
+            className="fp-desc"
             style={{
               fontFamily: "'Be Vietnam Pro', sans-serif",
               fontSize: '13px',
@@ -439,16 +441,35 @@ function ProductCard({ product, cartQty, onAdd, onIncrement, onDecrement }) {
           }}
         >
           <div className="price-pack-container">
-            <div
-              style={{
-                fontFamily: "'Be Vietnam Pro', sans-serif",
-                fontSize: '18px',
-                fontWeight: 700,
-                color: '#B22222',
-                lineHeight: 1,
-              }}
-            >
-              {product.currency}{product.price}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: "'Be Vietnam Pro', sans-serif",
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  color: '#B22222',
+                  lineHeight: 1,
+                }}
+              >
+                {product.currency}{product.price}
+              </div>
+              {product.compareAtPrice != null && product.compareAtPrice > product.price && (
+                <span
+                  style={{
+                    fontFamily: "'Be Vietnam Pro', sans-serif",
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#A8816A',
+                    textDecoration: 'line-through',
+                    textDecorationThickness: '1px',
+                    opacity: 0.8,
+                    lineHeight: 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {product.currency}{product.compareAtPrice}
+                </span>
+              )}
             </div>
             <div
               style={{
@@ -635,26 +656,33 @@ export default function FeaturedProducts({ cartItems = [], onAddToCartRaw, onUpd
             initial="hidden"
             whileInView="visible"
             viewport={viewportOnce}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))',
-              gap: 'clamp(14px, 2.5vw, 26px)',
-            }}
+            className="collection-scroll"
             id="products-grid"
           >
-            {featuredProducts.map((product) => {
+            {/* Show only the first 10 products in this section */}
+            {featuredProducts.slice(0, 10).map((product) => {
               const qty = getQty(product.id);
               return (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  cartQty={qty}
-                  onAdd={() => onAddToCartRaw && onAddToCartRaw(product)}
-                  onIncrement={() => onUpdateQuantity && onUpdateQuantity(product.id, qty + 1)}
-                  onDecrement={() => onUpdateQuantity && onUpdateQuantity(product.id, qty - 1)}
-                />
+                <div className="collection-card-wrap" key={product.id}>
+                  <ProductCard
+                    product={product}
+                    cartQty={qty}
+                    onAdd={() => onAddToCartRaw && onAddToCartRaw(product)}
+                    onIncrement={() => onUpdateQuantity && onUpdateQuantity(product.id, qty + 1)}
+                    onDecrement={() => onUpdateQuantity && onUpdateQuantity(product.id, qty - 1)}
+                  />
+                </div>
               );
             })}
+
+            {/* End-of-list arrow → existing "View all premixes" page */}
+            <Link
+              to="/shop"
+              className="collection-end-arrow"
+              aria-label="View all premixes"
+            >
+              <ArrowRight size={22} strokeWidth={2} />
+            </Link>
           </motion.div>
         )}
       </div>
@@ -663,28 +691,85 @@ export default function FeaturedProducts({ cartItems = [], onAddToCartRaw, onUpd
         @keyframes fp-spin {
           to { transform: rotate(360deg); }
         }
-        @media (min-width: 900px) {
-          #products-grid {
-            grid-template-columns: repeat(4, 1fr) !important;
+
+        /* Horizontal scrolling collection row */
+        .collection-scroll {
+          display: flex;
+          flex-wrap: nowrap;
+          gap: clamp(14px, 2.5vw, 26px);
+          overflow-x: auto;
+          overflow-y: hidden;
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+          scroll-snap-type: x proximity;
+          overscroll-behavior-x: contain;
+          padding: 4px 4px 16px;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(178, 34, 34, 0.25) transparent;
+        }
+        .collection-scroll::-webkit-scrollbar {
+          height: 6px;
+        }
+        .collection-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .collection-scroll::-webkit-scrollbar-thumb {
+          background: rgba(178, 34, 34, 0.22);
+          border-radius: 999px;
+        }
+        .collection-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(178, 34, 34, 0.38);
+        }
+        .collection-card-wrap {
+          flex: 0 0 auto;
+          width: clamp(210px, 24vw, 250px);
+          display: flex;
+          scroll-snap-align: start;
+        }
+        .collection-card-wrap > * {
+          width: 100%;
+        }
+        @media (max-width: 767px) {
+          .collection-card-wrap {
+            width: clamp(180px, 62vw, 230px);
           }
         }
-        @media (max-width: 414px) {
-          #products-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
+
+        /* Subtle end-of-list arrow → View all premixes */
+        .collection-end-arrow {
+          flex: 0 0 auto;
+          align-self: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 56px;
+          height: 56px;
+          margin: 0 6px 0 2px;
+          border-radius: 50%;
+          color: #B22222;
+          background: rgba(178, 34, 34, 0.07);
+          border: 1px solid rgba(178, 34, 34, 0.16);
+          box-shadow: 0 6px 18px rgba(178, 34, 34, 0.08);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          text-decoration: none;
+          opacity: 0.82;
+          scroll-snap-align: end;
+          transition: background 0.22s ease, transform 0.22s ease, opacity 0.22s ease;
         }
-        @media (max-width: 350px) {
-          #products-grid {
-            grid-template-columns: 1fr !important;
-          }
+        .collection-end-arrow:hover {
+          background: rgba(178, 34, 34, 0.13);
+          transform: scale(1.06);
+          opacity: 1;
         }
         
         /* Responsive product card bottom layout */
         .product-card-bottom {
           display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
+          flex-direction: column;
+          align-items: stretch;
+          justify-content: flex-start;
+          gap: 14px;
         }
         .price-pack-container {
           display: flex;
@@ -693,9 +778,25 @@ export default function FeaturedProducts({ cartItems = [], onAddToCartRaw, onUpd
           min-width: 0;
         }
         .product-action-container {
-          flex-shrink: 0;
           display: flex;
-          justify-content: flex-end;
+          width: 100%;
+          justify-content: center;
+        }
+
+        /* Cart CTA + quantity stepper — base (desktop unchanged) */
+        .fp-add-btn {
+          height: 40px;
+          border-radius: 7px;
+          padding: 0 16px;
+        }
+        .fp-stepper {
+          height: 40px;
+          border-radius: 7px;
+        }
+        .fp-stepper-btn {
+          width: 40px;
+          height: 100%;
+          flex-shrink: 0;
         }
         
         @media (max-width: 767px) {
@@ -703,10 +804,38 @@ export default function FeaturedProducts({ cartItems = [], onAddToCartRaw, onUpd
             flex-direction: column;
             align-items: stretch;
             justify-content: flex-start;
-            gap: 12px;
+            gap: 14px;
           }
           .product-action-container {
             justify-content: center;
+          }
+          /* Mobile polish: comfortable 44px touch targets + softer radius */
+          .fp-add-btn {
+            height: 44px;
+            border-radius: 10px;
+          }
+          .fp-stepper {
+            height: 44px;
+            border-radius: 10px;
+          }
+          .fp-stepper-btn {
+            width: 46px;
+          }
+          .fp-stepper-minus {
+            border-right: 1px solid rgba(178, 34, 34, 0.14);
+          }
+          /* Tidy, consistent text blocks so card heights stay balanced */
+          .fp-name {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+          .fp-desc {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
           }
         }
       `}</style>

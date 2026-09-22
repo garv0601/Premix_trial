@@ -42,6 +42,7 @@ function mapProductForShop(row) {
     image:            row.image_url || '',
     // Pricing
     price:            Number(row.price) || 0,
+    compareAtPrice:   row.compare_at_price != null ? Number(row.compare_at_price) : null,
     currency:         '₹',
     packSize:         row.servings ? `${row.weight || ''} (${row.servings})`.trim() : (row.weight || ''),
     // Badges
@@ -86,6 +87,7 @@ export function useActiveProducts() {
           name,
           short_description,
           price,
+          compare_at_price,
           weight,
           servings,
           image_url,

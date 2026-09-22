@@ -460,16 +460,35 @@ function ShopProductCard({ product, cartQty, onAdd, onIncrement, onDecrement }) 
           }}
         >
           <div className="price-pack-container">
-            <div
-              style={{
-                fontFamily: "'Be Vietnam Pro', sans-serif",
-                fontSize: '18px',
-                fontWeight: 700,
-                color: '#B22222',
-                lineHeight: 1,
-              }}
-            >
-              {product.currency}{product.price}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: "'Be Vietnam Pro', sans-serif",
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  color: '#B22222',
+                  lineHeight: 1,
+                }}
+              >
+                {product.currency}{product.price}
+              </div>
+              {product.compareAtPrice != null && product.compareAtPrice > product.price && (
+                <span
+                  style={{
+                    fontFamily: "'Be Vietnam Pro', sans-serif",
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    color: '#A8816A',
+                    textDecoration: 'line-through',
+                    textDecorationThickness: '1px',
+                    opacity: 0.8,
+                    lineHeight: 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {product.currency}{product.compareAtPrice}
+                </span>
+              )}
             </div>
             <div
               style={{
