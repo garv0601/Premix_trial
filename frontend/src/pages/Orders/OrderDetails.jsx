@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { getOrderById } from '../../services/orderService';
+import { useRegisterRefresh } from '../../context/RefreshContext';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import OrderStatusBadge from '../../components/orders/OrderStatusBadge';
 import OrderItem from '../../components/orders/OrderItem';
@@ -43,6 +44,17 @@ export default function OrderDetails({ onAddToCartRaw }) {
     };
     if (orderId) fetchOrder();
   }, [orderId]);
+
+  const refreshOrder = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const data = await getOrderById(orderId);
+      setOrder(data);
+    } catch (err) {
+      console.error("Order refresh failed", err);
+    }
+  }, [orderId]);
+  useRegisterRefresh(refreshOrder);
 
   const handleReorder = async () => {
     if (!order) return;

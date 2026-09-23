@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import supabase from '../lib/supabase';
+import { useRegisterRefresh } from '../context/RefreshContext';
 
 /**
  * Derive a simple badge string from product flags.
@@ -114,6 +115,8 @@ export function useActiveProducts() {
   useEffect(() => {
     fetchActive();
   }, [fetchActive]);
+
+  useRegisterRefresh(fetchActive);
 
   return { products, loading, error, refetch: fetchActive };
 }
@@ -219,6 +222,8 @@ export function useProductBySlug(slug) {
     fetchProduct();
   }, [fetchProduct]);
 
+  useRegisterRefresh(fetchProduct);
+
   return { product, loading, error, refetch: fetchProduct };
 }
 
@@ -282,6 +287,8 @@ export function useFeaturedProducts() {
   useEffect(() => {
     fetchFeatured();
   }, [fetchFeatured]);
+
+  useRegisterRefresh(fetchFeatured);
 
   return { products, loading, error, refetch: fetchFeatured };
 }

@@ -79,6 +79,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Let the custom mobile pull-to-refresh drive the gesture instead of the
+   browser's native overscroll refresh. Visual design is unchanged. */
+@media (max-width: 767px) and (pointer: coarse) {
+  html, body {
+    overscroll-behavior-y: contain;
+  }
+}
+
 /* ── Typography Base ── */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);

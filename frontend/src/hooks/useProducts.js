@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchProducts, fetchProductById } from '../services/api';
+import { useRegisterRefresh } from '../context/RefreshContext';
 
 export const useProducts = (initialFilters = {}) => {
   const [products, setProducts] = useState([]);
@@ -23,6 +24,8 @@ export const useProducts = (initialFilters = {}) => {
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
+
+  useRegisterRefresh(loadProducts);
 
   return { products, loading, error, filters, setFilters, refetch: loadProducts };
 };

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Check, ChevronLeft, Circle, PackageX, X } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getOrderById } from '../../services/orderService';
+import { useRegisterRefresh } from '../../context/RefreshContext';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import OrderStatusBadge from '../../components/orders/OrderStatusBadge';
 import './OrderTracking.css';
@@ -125,6 +126,17 @@ export default function OrderTracking() {
       document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   }, [orderId]);
+
+  const refreshOrder = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const fetchedOrder = await getOrderById(orderId);
+      setOrder(fetchedOrder);
+    } catch (loadError) {
+      console.error('[OrderTracking] refresh failed:', loadError);
+    }
+  }, [orderId]);
+  useRegisterRefresh(refreshOrder);
 
   const isCancelled = order?.status === 'cancelled';
   const currentStageIndex = STATUS_STAGE_INDEX[order?.status] ?? 0;

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getUserOrders } from '../../services/orderService';
+import { useRegisterRefresh } from '../../context/RefreshContext';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import MaaTip from '../../components/account/MaasTip';
 import OrderCard from '../../components/orders/OrderCard';
@@ -24,21 +25,24 @@ export default function MyOrders({ onAddToCartRaw }) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        if (!user?.id) return;
-        // getUserOrders reads auth token from Supabase session — no userId arg needed
-        const data = await getUserOrders();
-        setOrders(data);
-      } catch (error) {
-        console.error("Failed to fetch orders", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchOrders();
+  const fetchOrders = useCallback(async () => {
+    try {
+      if (!user?.id) return;
+      // getUserOrders reads auth token from Supabase session — no userId arg needed
+      const data = await getUserOrders();
+      setOrders(data);
+    } catch (error) {
+      console.error("Failed to fetch orders", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  useRegisterRefresh(fetchOrders);
 
   const handleReorder = async (order) => {
     let addedCount = 0;

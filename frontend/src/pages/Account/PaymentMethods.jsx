@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { getPaymentMethods, deletePaymentMethod, setDefaultPaymentMethod } from '../../services/paymentService';
+import { useRegisterRefresh } from '../../context/RefreshContext';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import MaaTip from '../../components/account/MaasTip';
 import PaymentCard from '../../components/payment/PaymentCard';
@@ -46,6 +47,8 @@ export default function PaymentMethods() {
   useEffect(() => {
     fetchMethods();
   }, [user]);
+
+  useRegisterRefresh(fetchMethods);
 
   const handleDeleteConfirm = async () => {
     if (!user || !deletingMethod) return;

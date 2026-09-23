@@ -6,6 +6,7 @@ import Footer from './Footer';
 import BottomNav from './BottomNav';
 import CartMiniBar from './CartMiniBar';
 import CartDrawer from '../common/CartDrawer';
+import PullToRefresh from '../common/PullToRefresh';
 
 export const Layout = ({ children, cartProps, navbarProps }) => {
   const { pathname } = useLocation();
@@ -13,6 +14,7 @@ export const Layout = ({ children, cartProps, navbarProps }) => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <PullToRefresh />
       <Header
         cartCount={navbarProps?.cartCount ?? 0}
         onOpenCart={navbarProps?.onOpenCart}

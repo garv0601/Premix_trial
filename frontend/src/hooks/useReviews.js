@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchProductReviews, submitProductReview } from '../services/api';
+import { useRegisterRefresh } from '../context/RefreshContext';
 
 export const useReviews = (productId) => {
   const [reviews, setReviews] = useState([]);
@@ -23,6 +24,8 @@ export const useReviews = (productId) => {
   useEffect(() => {
     loadReviews();
   }, [loadReviews]);
+
+  useRegisterRefresh(loadReviews);
 
   const addReview = async (reviewData) => {
     const res = await submitProductReview({ ...reviewData, productId });

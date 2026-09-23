@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { getAddresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } from '../../services/addressService';
+import { useRegisterRefresh } from '../../context/RefreshContext';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import MaaTip from '../../components/account/MaasTip';
 import AddressCard from '../../components/addresses/AddressCard';
@@ -46,6 +47,8 @@ export default function SavedAddresses() {
   useEffect(() => {
     fetchAddresses();
   }, [user]);
+
+  useRegisterRefresh(fetchAddresses);
 
   const handleSaveAddress = async (formData) => {
     if (!user) return;
