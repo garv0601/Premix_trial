@@ -19,7 +19,7 @@ export const Layout = ({ children, cartProps, navbarProps }) => {
       <main style={{ flex: 1 }}>{children}</main>
       <Footer />
       <WhatsAppButton hideTooltipOnMobile={isCheckoutPage} />
-      <BottomNav />
+      {!isCheckoutPage && <BottomNav />}
       <CartDrawer
         isOpen={cartProps?.isCartOpen}
         onClose={cartProps?.onCloseCart}

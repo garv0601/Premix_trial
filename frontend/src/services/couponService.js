@@ -47,3 +47,37 @@ export async function validateCoupon(code, subtotal) {
     discountAmount: data.discountAmount,
   };
 }
+
+/**
+ * Fetch the list of active, currently-valid coupons to surface as
+ * "Available offers" during checkout.
+ *
+ * Reads directly from the same `public.coupons` table the backend validates
+ * against — it never invents or hardcodes offers. Row-Level Security decides
+ * what a signed-in customer may see; if nothing is readable (or the query
+ * fails) this resolves to an empty list so the UI simply hides the section.
+ *
+ * All real coupon rules (minimum order, usage limits, per-customer usage,
+ * exact discount amount) are still enforced server-side on apply — this list
+ * is purely a discovery aid.
+ */
+export async function getAvailableCoupons() {
+  if (!supabase) return [];
+  try {
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('code, description, discount_type, discount_value, minimum_order_amount, maximum_discount, starts_at, expires_at, is_active')
+      .eq('is_active', true);
+
+    if (error || !Array.isArray(data)) return [];
+
+    return data.filter((c) => {
+      const started = !c.starts_at || c.starts_at <= nowIso;
+      const notExpired = !c.expires_at || c.expires_at >= nowIso;
+      return started && notExpired;
+    });
+  } catch {
+    return [];
+  }
+}

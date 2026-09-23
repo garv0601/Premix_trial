@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Plus, MapPin, Truck, CreditCard, CheckCircle, Package, Zap, Lightbulb, Wallet, Banknote, Edit2 } from 'lucide-react';
+import { Lock, Plus, Minus, MapPin, Truck, CreditCard, CheckCircle, Package, Lightbulb, Edit2, Ticket, Gift, ChevronDown, ChevronUp, ChevronRight, ArrowLeft, ArrowRight, FileText } from 'lucide-react';
 import { load as loadCashfreeSdk } from '@cashfreepayments/cashfree-js';
 import { useAuth } from '../../hooks/useAuth';
 import { getAddresses, addAddress, updateAddress } from '../../services/addressService';
 import { getPaymentMethods } from '../../services/paymentService';
 import { placeOrder, createCashfreeOrder } from '../../services/orderService';
+import { getAvailableCoupons } from '../../services/couponService';
 import AddressForm from '../../components/addresses/AddressForm';
+import CouponCelebration from '../../components/common/CouponCelebration';
 import supabase from '../../lib/supabase';
 import { calculateShippingCharge, calculateOrderTotal } from '../../utils/pricing';
 import './CheckoutPage.css';
@@ -15,18 +17,6 @@ import './CheckoutPage.css';
 const formatPrice = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
 
 /* Track which steps the user has reached (so they can go back but not skip ahead) */
-
-/* ── Animation variants ─────────────────────────────────────────────── */
-const stepContentVariants = {
-  enter: { opacity: 0, y: 16 },
-  center: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } },
-  exit: { opacity: 0, y: -12, transition: { duration: 0.3, ease: [0.55, 0.06, 0.68, 0.19] } },
-};
-
-const collapsedVariants = {
-  hidden: { opacity: 0, height: 0, marginTop: 0 },
-  visible: { opacity: 1, height: 'auto', marginTop: 0, transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] } },
-};
 
 export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuantity, clearCart, coupon }) {
   const { user } = useAuth();
@@ -56,6 +46,12 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
   const [billingMatchesDelivery, setBillingMatchesDelivery] = useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  /* ── Coupon / Offers state (checkout-side) ── */
+  const [couponExpanded, setCouponExpanded] = useState(false);
+  const [couponInput, setCouponInput] = useState('');
+  const [availableOffers, setAvailableOffers] = useState([]);
+  const [celebration, setCelebration] = useState({ show: false, amount: 0 });
+
   /* ── Refs for each step section ── */
   const step1Ref = useRef(null);
   const step2Ref = useRef(null);
@@ -81,6 +77,17 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
     if (user) {
       fetchAddresses();
     }
+  }, [user]);
+
+  // Load real "Available offers" from the coupons table (RLS-gated). If nothing
+  // is readable the list stays empty and the offers UI is simply hidden — we
+  // never fabricate offers.
+  useEffect(() => {
+    let active = true;
+    getAvailableCoupons()
+      .then((offers) => { if (active) setAvailableOffers(offers || []); })
+      .catch(() => { if (active) setAvailableOffers([]); });
+    return () => { active = false; };
   }, [user]);
 
   // Revalidate cart against latest DB stock
@@ -429,612 +436,615 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
     }
   };
 
+  /* ── Coupon handlers (checkout-side) — reuse the shared useCoupon hook so a
+     coupon applied here or in the Cart stays in sync (localStorage-backed).
+     All validation/discount math is enforced server-side. ── */
+  const handleApplyCoupon = async (codeArg) => {
+    if (!coupon) return;
+    const code = (codeArg ?? couponInput);
+    if (!code || !code.trim()) return;
+    // Never re-apply the coupon that's already active.
+    if (appliedCoupon && appliedCoupon.code?.toUpperCase() === code.trim().toUpperCase()) {
+      setCouponInput('');
+      return;
+    }
+    const result = await coupon.applyCoupon(code, subtotal);
+    if (result.success) {
+      setCouponInput('');
+      setCelebration({ show: true, amount: result.result?.discountAmount || 0 });
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    coupon?.removeCoupon();
+    setCouponInput('');
+  };
+
+  /* ── Single sticky CTA: drives the progressive flow, then pays.
+     It can never trigger payment before the payment step is reached. ── */
+  const handleStickyCTA = () => {
+    if (cartItems.length === 0) return;
+    if (currentStep === 1) return handleContinueToDelivery();
+    if (currentStep === 2) return handleContinueToPayment();
+    return handlePayAndPlaceOrder();
+  };
+
+  const stickyCtaLabel = isProcessingPayment
+    ? 'Processing…'
+    : currentStep < 3
+      ? 'Continue'
+      : 'Proceed to Pay';
+
+  const deliveryLabel = deliveryMethod === 'standard' ? 'Standard Delivery' : 'Express Delivery';
+  const deliveryEta = deliveryMethod === 'standard' ? '3–5 business days' : '1–2 business days';
+  const paymentLabel = paymentMethod === 'card' ? 'Saved Credit Card'
+    : paymentMethod === 'upi' ? 'UPI'
+    : 'Cash on Delivery';
+
+  const formatOfferLine = (c) => {
+    const value = c.discount_type === 'percent' || c.discount_type === 'percentage'
+      ? `${Number(c.discount_value)}% off`
+      : `${formatPrice(c.discount_value)} off`;
+    const min = c.minimum_order_amount ? ` on orders above ${formatPrice(c.minimum_order_amount)}` : '';
+    return c.description || `Get ${value}${min}`;
+  };
+
+  const expand = {
+    hidden: { opacity: 0, height: 0 },
+    visible: { opacity: 1, height: 'auto', transition: { duration: 0.34, ease: [0.25, 0.46, 0.45, 0.94] } },
+    exit: { opacity: 0, height: 0, transition: { duration: 0.24, ease: [0.55, 0.06, 0.68, 0.19] } },
+  };
+
   return (
-    <div className="checkout-container">
-      {/* HEADER */}
-      <header className="checkout-header">
-        <div className="checkout-header-inner">
-          <Link to="/" className="checkout-brand">ANNAPURNA</Link>
-          <div className="checkout-secure-badge">
-            <Lock size={14} /> Secure Checkout
-          </div>
-        </div>
+    <div className="apx-checkout">
+      <CouponCelebration
+        show={celebration.show}
+        amount={celebration.amount}
+        onDone={() => setCelebration({ show: false, amount: 0 })}
+      />
+
+      {/* ── Page header ── */}
+      <header className="apx-header">
+        <button type="button" className="apx-back" onClick={() => navigate(-1)} aria-label="Go back">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="apx-title">Checkout</h1>
+        <div className="apx-secure"><Lock size={13} /> Secure</div>
       </header>
 
-      {/* CHECKOUT SUBTITLE */}
-      <div className="checkout-subtitle-area">
-        <h1 className="checkout-page-title">Checkout</h1>
-        <p className="checkout-page-subtitle">Almost there! Just a few more details to get Maa's love to your doorstep.</p>
-        
-        {error && (
-          <div style={{
-            marginTop: '20px',
-            padding: '16px',
-            background: '#FFF4F4',
-            borderLeft: '4px solid #B22222',
-            borderRadius: '6px',
-            color: '#B22222',
-            fontSize: '14px',
-            fontWeight: '500',
-            whiteSpace: 'pre-wrap'
-          }}>
-            {error}
-          </div>
-        )}
-      </div>
+      <div className="apx-body">
 
-      {/* MAIN CONTENT */}
-      <div className="checkout-main">
-        
-        {/* LEFT COLUMN: STEPS */}
-        <div className="checkout-left">
-          
-          {/* ═══════════ STEP 1: SHIPPING ADDRESS ═══════════ */}
-          <div
-            ref={step1Ref}
-            className={`checkout-step ${currentStep === 1 ? 'active-step' : currentStep > 1 ? 'completed-step' : 'disabled-step'}`}
-          >
-            <div
-              className={`step-header ${currentStep !== 1 && highestStep >= 1 ? 'clickable-header' : ''}`}
-              onClick={() => currentStep !== 1 && goToStep(1)}
-            >
-              {currentStep > 1 ? (
-                <div className="step-number completed-number">
-                  <CheckCircle size={18} />
-                </div>
-              ) : (
-                <div className={`step-number ${currentStep === 1 ? 'active-number' : ''}`}>1</div>
+        {error && <div className="apx-alert" role="alert">{error}</div>}
+
+        {/* ═══════════ DELIVERY ADDRESS ═══════════ */}
+        <section
+          ref={step1Ref}
+          className={`apx-card ${currentStep === 1 ? 'is-active' : ''} ${currentStep > 1 ? 'is-done' : ''}`}
+        >
+          <div className="apx-card-head">
+            <span className="apx-ic">
+              {currentStep > 1 ? <CheckCircle size={18} /> : <MapPin size={18} />}
+            </span>
+            <div className="apx-head-txt">
+              <h2 className="apx-card-title">Delivery Address</h2>
+              {currentStep > 1 && selectedAddress && (
+                <p className="apx-card-sub">
+                  {(selectedAddress.label || 'Home')} · {selectedAddress.city}, {selectedAddress.state} {selectedAddress.postalCode}
+                </p>
               )}
-              <h2 className="step-title">
-                {currentStep > 1 ? '1. ' : ''}Shipping Address
-              </h2>
-              {currentStep > 1 && (
-                <span className="step-edit-btn">Edit</span>
+              {currentStep === 1 && addresses.length === 0 && !showAddressForm && !isLoadingAddresses && (
+                <p className="apx-card-sub">Add where we should deliver</p>
               )}
             </div>
-            
-            <AnimatePresence mode="wait">
-              {currentStep === 1 && (
-                <motion.div
-                  key="step1-full"
-                  className="step-content"
-                  variants={stepContentVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                >
-                  {isLoadingAddresses ? (
-                    <div className="loading-state">Loading addresses...</div>
-                  ) : showAddressForm ? (
-                    <div className="address-form-wrapper">
-                      <AddressForm 
-                        initialData={editingAddress}
-                        onSave={handleSaveAddress} 
-                        onCancel={handleCancelAddressForm} 
-                      />
-                    </div>
-                  ) : (
-                    <>
-                      {addresses.length === 0 ? (
-                        <div className="empty-address-state">
-                          <p>No saved addresses yet.</p>
-                          <p>Add an address to continue.</p>
-                          <button 
-                            className="add-address-btn"
-                            onClick={() => { setEditingAddress(null); setShowAddressForm(true); }}
+            {currentStep > 1 && (
+              <button type="button" className="apx-change" onClick={() => goToStep(1)}>
+                Change <ChevronDown size={15} />
+              </button>
+            )}
+          </div>
+
+          <AnimatePresence initial={false}>
+            {currentStep === 1 && (
+              <motion.div
+                key="addr-body"
+                className="apx-card-body"
+                variants={expand}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                {isLoadingAddresses ? (
+                  <div className="apx-loading">Loading addresses…</div>
+                ) : showAddressForm ? (
+                  <div className="apx-addr-form">
+                    <AddressForm
+                      initialData={editingAddress}
+                      onSave={handleSaveAddress}
+                      onCancel={handleCancelAddressForm}
+                    />
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <button
+                    type="button"
+                    className="apx-add-address"
+                    onClick={() => { setEditingAddress(null); setShowAddressForm(true); }}
+                  >
+                    <Plus size={18} /> Add Address
+                  </button>
+                ) : (
+                  <>
+                    <div className="apx-addr-list">
+                      {addresses.map((address) => {
+                        const isSel = selectedAddressId === address.id;
+                        return (
+                          <div
+                            key={address.id}
+                            className={`apx-addr ${isSel ? 'selected' : ''}`}
+                            onClick={() => { setSelectedAddressId(address.id); setError(null); }}
                           >
-                            <Plus size={16} /> Add New Address
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="address-list">
-                          {addresses.map(address => (
-                            <div 
-                              key={address.id} 
-                              className={`address-card ${selectedAddressId === address.id ? 'selected' : ''}`}
-                              onClick={() => {
-                                setSelectedAddressId(address.id);
-                                setError(null);
-                              }}
-                            >
-                              {selectedAddressId === address.id && (
-                                <div className="address-card-top-actions">
+                            <span className="apx-addr-radio"><span className="apx-radio-dot" /></span>
+                            <div className="apx-addr-info">
+                              <div className="apx-addr-toprow">
+                                <span className="apx-addr-badge">{address.label || 'Home'}</span>
+                                {isSel && (
                                   <button
                                     type="button"
-                                    className="address-edit-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditAddress(address);
-                                    }}
+                                    className="apx-addr-edit"
+                                    onClick={(e) => { e.stopPropagation(); handleEditAddress(address); }}
                                     aria-label="Edit this address"
-                                    title="Edit address"
                                   >
-                                    <Edit2 size={13} />
-                                    <span>Edit</span>
+                                    <Edit2 size={12} /> Edit
                                   </button>
-                                  <div className="address-check">
-                                    <CheckCircle size={18} />
-                                  </div>
-                                </div>
-                              )}
-                              <div className="address-label-badge">{address.label || 'Home'}</div>
-                              <div className="address-name">{address.fullName}</div>
-                              <div className="address-phone">{address.phone}</div>
-                              <div className="address-line">{address.addressLine1}</div>
-                              {address.addressLine2 && <div className="address-line">{address.addressLine2}</div>}
-                              <div className="address-line">{address.city}, {address.state} {address.postalCode}</div>
-                            </div>
-                          ))}
-                          
-                          <button 
-                            className="add-address-btn secondary"
-                            onClick={() => { setEditingAddress(null); setShowAddressForm(true); }}
-                          >
-                            <Plus size={16} /> Add New Address
-                          </button>
-                        </div>
-                      )}
-
-                      {error && <div className="checkout-error-msg">{error}</div>}
-
-                      <button 
-                        className="continue-btn"
-                        onClick={handleContinueToDelivery}
-                        disabled={addresses.length === 0}
-                      >
-                        Continue to Delivery →
-                      </button>
-                    </>
-                  )}
-                </motion.div>
-              )}
-
-              {/* Collapsed address summary when past step 1 */}
-              {currentStep > 1 && selectedAddress && (
-                <motion.div
-                  key="step1-collapsed"
-                  className="step-content"
-                  variants={collapsedVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <div className="collapsed-address-summary">
-                    <MapPin size={16} className="collapsed-address-icon" />
-                    <div>
-                      <div className="collapsed-address-name">{selectedAddress.fullName}</div>
-                      <div className="collapsed-address-detail">
-                        {selectedAddress.addressLine1}
-                        {selectedAddress.addressLine2 ? `, ${selectedAddress.addressLine2}` : ''}
-                      </div>
-                      <div className="collapsed-address-detail">
-                        {selectedAddress.city}, {selectedAddress.state}, {selectedAddress.postalCode}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ═══════════ STEP 2: DELIVERY METHOD ═══════════ */}
-          <div
-            ref={step2Ref}
-            className={`checkout-step ${currentStep === 2 ? 'active-step' : currentStep > 2 ? 'completed-step' : 'disabled-step'}`}
-          >
-            <div className="step-connector"></div>
-            <div
-              className={`step-header ${currentStep !== 2 && highestStep >= 2 ? 'clickable-header' : ''}`}
-              onClick={() => currentStep !== 2 && highestStep >= 2 && goToStep(2)}
-            >
-              {currentStep > 2 ? (
-                <div className="step-number completed-number">
-                  <CheckCircle size={18} />
-                </div>
-              ) : (
-                <div className={`step-number ${currentStep === 2 ? 'active-number delivery-active' : ''}`}>
-                  {currentStep === 2 ? <Truck size={16} /> : '2'}
-                </div>
-              )}
-              <h2 className="step-title">
-                {currentStep >= 2 ? '2. ' : ''}Delivery Method
-              </h2>
-              {currentStep > 2 && (
-                <span className="step-edit-btn">Edit</span>
-              )}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {currentStep === 2 && (
-                <motion.div
-                  key="step2-content"
-                  className="step-content"
-                  variants={stepContentVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                >
-                  <div className="delivery-options">
-                    {/* Standard Delivery */}
-                    <label
-                      className={`delivery-option ${deliveryMethod === 'standard' ? 'selected' : ''}`}
-                      htmlFor="delivery-standard"
-                    >
-                      <div className="delivery-option-radio">
-                        <input
-                          type="radio"
-                          id="delivery-standard"
-                          name="deliveryMethod"
-                          value="standard"
-                          checked={deliveryMethod === 'standard'}
-                          onChange={() => setDeliveryMethod('standard')}
-                        />
-                        <span className="custom-radio"></span>
-                      </div>
-                      <div className="delivery-option-info">
-                        <span className="delivery-option-name">Standard Delivery</span>
-                        <span className="delivery-option-eta">Estimated arrival: 3–5 business days</span>
-                      </div>
-                      <span className={`delivery-option-price ${standardDeliveryCost === 0 ? 'free' : ''}`}>
-                        {standardDeliveryCost === 0 ? 'Free' : formatPrice(standardDeliveryCost)}
-                      </span>
-                    </label>
-
-                    {/* Express Delivery */}
-                    <label
-                      className={`delivery-option ${deliveryMethod === 'express' ? 'selected' : ''}`}
-                      htmlFor="delivery-express"
-                    >
-                      <div className="delivery-option-radio">
-                        <input
-                          type="radio"
-                          id="delivery-express"
-                          name="deliveryMethod"
-                          value="express"
-                          checked={deliveryMethod === 'express'}
-                          onChange={() => setDeliveryMethod('express')}
-                        />
-                        <span className="custom-radio"></span>
-                      </div>
-                      <div className="delivery-option-info">
-                        <span className="delivery-option-name">Express Delivery</span>
-                        <span className="delivery-option-eta">Estimated arrival: 1–2 business days</span>
-                      </div>
-                      <span className="delivery-option-price">₹50</span>
-                    </label>
-                  </div>
-
-                  {/* Maa's Tip */}
-                  <div className="maas-tip-card">
-                    <div className="maas-tip-icon">💡</div>
-                    <div className="maas-tip-content">
-                      <span className="maas-tip-title">Maa's Tip:</span>
-                      <span className="maas-tip-text">
-                        For delicate items like our Besan Laddoos, choosing Express Delivery ensures they arrive perfectly fresh and intact, just like they came out of the kitchen!
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Continue to Payment Button */}
-                  <div className="delivery-continue-wrap">
-                    <button
-                      className="continue-btn delivery-continue-btn"
-                      onClick={handleContinueToPayment}
-                    >
-                      Continue to Payment →
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Collapsed delivery summary when past step 2 */}
-              {currentStep > 2 && (
-                <motion.div
-                  key="step2-collapsed"
-                  className="step-content"
-                  variants={collapsedVariants}
-                  initial="hidden"
-                  animate="visible"
-                >
-                  <div className="collapsed-address-summary">
-                    <Truck size={16} className="collapsed-address-icon" />
-                    <div>
-                      <div className="collapsed-address-name">
-                        {deliveryMethod === 'standard' ? 'Standard Delivery' : 'Express Delivery'}
-                      </div>
-                      <div className="collapsed-address-detail">
-                        {deliveryMethod === 'standard'
-                          ? `Estimated arrival: 3–5 business days · ${standardDeliveryCost === 0 ? 'Free' : formatPrice(standardDeliveryCost)}`
-                          : `Estimated arrival: 1–2 business days · ${formatPrice(deliveryCost)}`}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* ═══════════ STEP 3: PAYMENT METHOD ═══════════ */}
-          <div
-            ref={step3Ref}
-            className={`checkout-step ${currentStep === 3 ? 'active-step' : 'disabled-step'}`}
-          >
-            <div className="step-connector"></div>
-            <div
-              className={`step-header ${currentStep !== 3 && highestStep >= 3 ? 'clickable-header' : ''}`}
-              onClick={() => currentStep !== 3 && highestStep >= 3 && goToStep(3)}
-            >
-              <div className={`step-number ${currentStep === 3 ? 'active-number' : ''}`}>
-                {currentStep === 3 ? <CreditCard size={16} /> : <CreditCard size={14} />}
-              </div>
-              <h2 className="step-title">
-                {currentStep >= 3 ? '3. ' : ''}Payment Method
-              </h2>
-            </div>
-
-            <AnimatePresence mode="wait">
-              {currentStep === 3 && (
-                <motion.div
-                  key="step3-content"
-                  className="step-content"
-                  variants={stepContentVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                >
-                  <div className="payment-methods-wrap">
-
-                    {/* ── SAVED CREDIT CARD ── */}
-                    <div
-                      className={`payment-method-option ${paymentMethod === 'card' ? 'selected' : ''}`}
-                      onClick={() => setPaymentMethod('card')}
-                    >
-                      <div className="payment-method-header">
-                        <div className="payment-method-radio">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="card"
-                            checked={paymentMethod === 'card'}
-                            onChange={() => setPaymentMethod('card')}
-                            id="pm-card"
-                          />
-                          <span className="custom-radio"></span>
-                        </div>
-                        <span className="payment-method-label">Saved Credit Card</span>
-                      </div>
-
-                      {paymentMethod === 'card' && (
-                        <motion.div
-                          className="payment-method-body"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          {savedCards.length > 0 ? (
-                            savedCards.map(card => (
-                              <div
-                                key={card.id}
-                                className={`saved-card-row ${selectedCardId === card.id ? 'selected' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); setSelectedCardId(card.id); }}
-                              >
-                                <div className="saved-card-radio">
-                                  <input
-                                    type="radio"
-                                    name="selectedCard"
-                                    checked={selectedCardId === card.id}
-                                    onChange={() => setSelectedCardId(card.id)}
-                                  />
-                                  <span className="custom-radio small"></span>
-                                </div>
-                                <div className="saved-card-info">
-                                  <span className="saved-card-name">
-                                    {card.brand === 'mastercard' ? 'SBI' : 'HDFC Bank'} {card.brand.charAt(0).toUpperCase() + card.brand.slice(1)} **** **** **** {card.last4}
-                                  </span>
-                                </div>
+                                )}
                               </div>
-                            ))
-                          ) : (
-                            <div className="no-saved-cards">
-                              <p>No saved cards. Cashfree will securely collect your card details.</p>
+                              <div className="apx-addr-name">{address.fullName}</div>
+                              <div className="apx-addr-line">
+                                {address.addressLine1}{address.addressLine2 ? `, ${address.addressLine2}` : ''}
+                              </div>
+                              <div className="apx-addr-line">{address.city}, {address.state} {address.postalCode}</div>
+                              <div className="apx-addr-phone">{address.phone}</div>
                             </div>
-                          )}
-
-                          {/* CVV Input */}
-                          {savedCards.length > 0 && selectedCardId && (
-                            <div className="cvv-input-row">
-                              <input
-                                type="password"
-                                maxLength="4"
-                                placeholder="CVV"
-                                value={cvv}
-                                onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                                className="cvv-input"
-                              />
-                              <span className="cvv-hint">
-                                <Lock size={12} /> 3 digits on back of card
-                              </span>
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
+                          </div>
+                        );
+                      })}
                     </div>
-
-                    {/* ── UPI ── */}
-                    <div
-                      className={`payment-method-option ${paymentMethod === 'upi' ? 'selected' : ''}`}
-                      onClick={() => setPaymentMethod('upi')}
+                    <button
+                      type="button"
+                      className="apx-add-address ghost"
+                      onClick={() => { setEditingAddress(null); setShowAddressForm(true); }}
                     >
-                      <div className="payment-method-header">
-                        <div className="payment-method-radio">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="upi"
-                            checked={paymentMethod === 'upi'}
-                            onChange={() => setPaymentMethod('upi')}
-                            id="pm-upi"
-                          />
-                          <span className="custom-radio"></span>
-                        </div>
-                        <span className="payment-method-label">UPI (Google Pay, PhonePe, Paytm)</span>
-                      </div>
+                      <Plus size={16} /> Add New Address
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
 
-                      {paymentMethod === 'upi' && (
-                        <motion.div
-                          className="payment-method-body"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <p className="payment-body-hint">Pay instantly via your UPI app.</p>
-                        </motion.div>
-                      )}
-                    </div>
-
-                    {/* ── CASH ON DELIVERY ── */}
-                    <div
-                      className={`payment-method-option ${paymentMethod === 'cod' ? 'selected' : ''}`}
-                      onClick={() => setPaymentMethod('cod')}
-                    >
-                      <div className="payment-method-header">
-                        <div className="payment-method-radio">
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value="cod"
-                            checked={paymentMethod === 'cod'}
-                            onChange={() => setPaymentMethod('cod')}
-                            id="pm-cod"
-                          />
-                          <span className="custom-radio"></span>
-                        </div>
-                        <span className="payment-method-label">Cash on Delivery</span>
-                      </div>
-
-                      {paymentMethod === 'cod' && (
-                        <motion.div
-                          className="payment-method-body"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <p className="payment-body-hint">Pay with cash when your order arrives.</p>
-                          <p className="payment-body-sub-hint">(Additional ₹40 convenience fee applies)</p>
-                        </motion.div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Billing matches delivery checkbox */}
-                  <label className="billing-checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={billingMatchesDelivery}
-                      onChange={(e) => setBillingMatchesDelivery(e.target.checked)}
-                    />
-                    <span>My billing address is the same as my delivery address.</span>
-                  </label>
-                </motion.div>
+        {/* ═══════════ DELIVERY METHOD ═══════════ */}
+        <section
+          ref={step2Ref}
+          className={`apx-card ${currentStep === 2 ? 'is-active' : ''} ${currentStep > 2 ? 'is-done' : ''} ${currentStep < 2 ? 'is-upcoming' : ''}`}
+        >
+          <div className="apx-card-head">
+            <span className="apx-ic">
+              {currentStep > 2 ? <CheckCircle size={18} /> : <Truck size={18} />}
+            </span>
+            <div className="apx-head-txt">
+              <h2 className="apx-card-title">Delivery Method</h2>
+              {currentStep > 2 && (
+                <p className="apx-card-sub">{deliveryLabel} · {deliveryEta}</p>
               )}
-            </AnimatePresence>
-          </div>
-
-        </div>
-
-        {/* RIGHT COLUMN: ORDER SUMMARY */}
-        <div className="checkout-right">
-          <div className="order-summary-card">
-            <h2 className="summary-title">Order Summary</h2>
-            
-            <div className="summary-items">
-              {cartItems.length === 0 ? (
-                <p className="empty-cart-msg">Your cart is empty.</p>
-              ) : (
-                cartItems.map(item => (
-                  <div key={item.id} className="summary-item">
-                    <div className="summary-item-image-wrap">
-                      <img src={item.image} alt={item.name} />
-                      <span className="summary-item-qty">{item.quantity}</span>
-                    </div>
-                    <div className="summary-item-details">
-                      <div className="summary-item-name">{item.name}</div>
-                      {item.weight && <div className="summary-item-meta">{item.weight} · Qty: {item.quantity}</div>}
-                    </div>
-                    <div className="summary-item-price">{formatPrice(item.price * item.quantity)}</div>
-                  </div>
-                ))
+              {currentStep < 2 && (
+                <p className="apx-card-sub">Choose how you'd like it delivered</p>
               )}
             </div>
-
-            <div className="summary-totals">
-              <div className="summary-row">
-                <span>Subtotal</span>
-                <span>{formatPrice(subtotal)}</span>
-              </div>
-              {discountAmount > 0 && (
-                <motion.div
-                  className="summary-row"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <span>Discount {appliedCoupon ? `(${appliedCoupon.code})` : ''}</span>
-                  <span>-{formatPrice(discountAmount)}</span>
-                </motion.div>
-              )}
-              <div className="summary-row">
-                <span>Delivery {currentStep >= 2 ? `(${deliveryMethod === 'standard' ? 'Standard' : 'Express'})` : ''}</span>
-                <span className={deliveryCost === 0 ? 'delivery-free-text' : ''}>
+            {currentStep > 2 && (
+              <div className="apx-head-right">
+                <button type="button" className="apx-change" onClick={() => goToStep(2)}>
+                  Change <ChevronDown size={15} />
+                </button>
+                <span className={`apx-head-price ${deliveryCost === 0 ? 'free' : ''}`}>
                   {deliveryCost === 0 ? 'Free' : formatPrice(deliveryCost)}
                 </span>
               </div>
-              {codFee > 0 && (
-                <motion.div
-                  className="summary-row"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <span>COD Fee</span>
-                  <span>{formatPrice(codFee)}</span>
-                </motion.div>
-              )}
-              <div className="summary-total-row">
-                <span className="total-label">Total</span>
-                <span className="total-value">{formatPrice(total)}</span>
-              </div>
-            </div>
+            )}
+          </div>
 
-            <button
-              className={`pay-btn ${currentStep < 3 ? 'disabled' : ''}`}
-              disabled={currentStep < 3 || isProcessingPayment}
-              onClick={handlePayAndPlaceOrder}
-            >
-              {isProcessingPayment ? (
-                <span className="pay-btn-loading">Processing…</span>
-              ) : (
-                `Pay ${formatPrice(total)} & Place Order`
-              )}
-            </button>
-            
-            <div className="secure-checkout-note">
-              <Lock size={12} /> Secure 256-bit SSL Encryption
+          <AnimatePresence initial={false}>
+            {currentStep === 2 && (
+              <motion.div
+                key="delivery-body"
+                className="apx-card-body"
+                variants={expand}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <div className="apx-options">
+                  <label className={`apx-option ${deliveryMethod === 'standard' ? 'selected' : ''}`} htmlFor="delivery-standard">
+                    <span className="apx-option-radio">
+                      <input
+                        type="radio"
+                        id="delivery-standard"
+                        name="deliveryMethod"
+                        value="standard"
+                        checked={deliveryMethod === 'standard'}
+                        onChange={() => setDeliveryMethod('standard')}
+                      />
+                      <span className="apx-radio-dot" />
+                    </span>
+                    <span className="apx-option-info">
+                      <span className="apx-option-name">Standard Delivery</span>
+                      <span className="apx-option-eta">Estimated arrival: 3–5 business days</span>
+                    </span>
+                    <span className={`apx-option-price ${standardDeliveryCost === 0 ? 'free' : ''}`}>
+                      {standardDeliveryCost === 0 ? 'Free' : formatPrice(standardDeliveryCost)}
+                    </span>
+                  </label>
+
+                  <label className={`apx-option ${deliveryMethod === 'express' ? 'selected' : ''}`} htmlFor="delivery-express">
+                    <span className="apx-option-radio">
+                      <input
+                        type="radio"
+                        id="delivery-express"
+                        name="deliveryMethod"
+                        value="express"
+                        checked={deliveryMethod === 'express'}
+                        onChange={() => setDeliveryMethod('express')}
+                      />
+                      <span className="apx-radio-dot" />
+                    </span>
+                    <span className="apx-option-info">
+                      <span className="apx-option-name">Express Delivery</span>
+                      <span className="apx-option-eta">Estimated arrival: 1–2 business days</span>
+                    </span>
+                    <span className="apx-option-price">₹50</span>
+                  </label>
+                </div>
+
+                <div className="apx-tip">
+                  <Lightbulb size={16} className="apx-tip-ic" />
+                  <p className="apx-tip-txt">
+                    <strong>Maa's Tip:</strong> For delicate items like our Besan Laddoos, Express Delivery keeps them perfectly fresh — just like they came out of the kitchen.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
+
+        {/* ═══════════ APPLY COUPON / OFFERS ═══════════ */}
+        <section className={`apx-card apx-coupon ${appliedCoupon ? 'is-done' : ''} ${couponExpanded && !appliedCoupon ? 'is-active' : ''}`}>
+          <div
+            className={`apx-card-head ${!appliedCoupon ? 'clickable' : ''}`}
+            onClick={() => { if (!appliedCoupon) setCouponExpanded((v) => !v); }}
+          >
+            <span className="apx-ic">
+              {appliedCoupon ? <CheckCircle size={18} /> : <Ticket size={18} />}
+            </span>
+            <div className="apx-head-txt">
+              <h2 className="apx-card-title">{appliedCoupon ? 'Coupon Applied' : 'Apply Coupon'}</h2>
+              <p className="apx-card-sub">
+                {appliedCoupon ? `${appliedCoupon.code} applied` : 'Have a coupon?'}
+              </p>
+            </div>
+            {appliedCoupon ? (
+              <button
+                type="button"
+                className="apx-change danger"
+                onClick={(e) => { e.stopPropagation(); handleRemoveCoupon(); }}
+              >
+                Remove
+              </button>
+            ) : (
+              <span className="apx-change as-toggle">
+                Apply {couponExpanded ? <ChevronUp size={15} /> : <ChevronRight size={15} />}
+              </span>
+            )}
+          </div>
+
+          <AnimatePresence initial={false}>
+            {appliedCoupon ? (
+              <motion.div
+                key="coupon-applied"
+                className="apx-card-body"
+                variants={expand}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <div className="apx-applied">
+                  <div className="apx-applied-left">
+                    <Gift size={16} />
+                    <span className="apx-applied-code">{appliedCoupon.code}</span>
+                  </div>
+                  <span className="apx-applied-amt">-{formatPrice(discountAmount)}</span>
+                </div>
+              </motion.div>
+            ) : couponExpanded ? (
+              <motion.div
+                key="coupon-body"
+                className="apx-card-body"
+                variants={expand}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <div className="apx-coupon-input-row">
+                  <input
+                    type="text"
+                    className="apx-coupon-input"
+                    placeholder="Enter coupon code"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
+                  />
+                  <button
+                    type="button"
+                    className="apx-coupon-apply"
+                    onClick={() => handleApplyCoupon()}
+                    disabled={coupon?.applying || !couponInput.trim()}
+                  >
+                    {coupon?.applying ? 'Applying…' : 'Apply'}
+                  </button>
+                </div>
+
+                {coupon?.error && <p className="apx-coupon-error">{coupon.error}</p>}
+
+                {availableOffers.length > 0 && (
+                  <div className="apx-offers">
+                    <h3 className="apx-offers-title">Available offers</h3>
+                    {availableOffers.map((offer) => (
+                      <div className="apx-offer" key={offer.code}>
+                        <span className="apx-offer-ic"><Gift size={16} /></span>
+                        <div className="apx-offer-info">
+                          <span className="apx-offer-code">{offer.code}</span>
+                          <span className="apx-offer-desc">{formatOfferLine(offer)}</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="apx-offer-apply"
+                          onClick={() => handleApplyCoupon(offer.code)}
+                          disabled={coupon?.applying}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </section>
+
+        {/* ═══════════ PAYMENT METHOD ═══════════ */}
+        <section
+          ref={step3Ref}
+          className={`apx-card ${currentStep === 3 ? 'is-active' : ''} ${currentStep < 3 ? 'is-upcoming' : ''}`}
+        >
+          <div className="apx-card-head">
+            <span className="apx-ic"><CreditCard size={18} /></span>
+            <div className="apx-head-txt">
+              <h2 className="apx-card-title">Payment Method</h2>
+              <p className="apx-card-sub">
+                {currentStep === 3 ? paymentLabel : 'Select your preferred payment method'}
+              </p>
             </div>
           </div>
-        </div>
 
+          <AnimatePresence initial={false}>
+            {currentStep === 3 && (
+              <motion.div
+                key="payment-body"
+                className="apx-card-body"
+                variants={expand}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <div className="apx-options">
+                  {/* Saved Card */}
+                  <div className={`apx-option column ${paymentMethod === 'card' ? 'selected' : ''}`} onClick={() => setPaymentMethod('card')}>
+                    <div className="apx-option-top">
+                      <span className="apx-option-radio">
+                        <input type="radio" name="paymentMethod" value="card" checked={paymentMethod === 'card'} onChange={() => setPaymentMethod('card')} id="pm-card" />
+                        <span className="apx-radio-dot" />
+                      </span>
+                      <span className="apx-option-name">Saved Credit / Debit Card</span>
+                    </div>
+                    {paymentMethod === 'card' && (
+                      <div className="apx-option-detail">
+                        {savedCards.length > 0 ? (
+                          savedCards.map((card) => (
+                            <div
+                              key={card.id}
+                              className={`apx-card-row ${selectedCardId === card.id ? 'selected' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); setSelectedCardId(card.id); }}
+                            >
+                              <span className="apx-option-radio small">
+                                <input type="radio" name="selectedCard" checked={selectedCardId === card.id} onChange={() => setSelectedCardId(card.id)} />
+                                <span className="apx-radio-dot" />
+                              </span>
+                              <span className="apx-card-num">
+                                {card.brand === 'mastercard' ? 'SBI' : 'HDFC Bank'} {card.brand.charAt(0).toUpperCase() + card.brand.slice(1)} •••• {card.last4}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="apx-hint">No saved cards. Cashfree will securely collect your card details.</p>
+                        )}
+                        {savedCards.length > 0 && selectedCardId && (
+                          <div className="apx-cvv-row">
+                            <input
+                              type="password"
+                              maxLength="4"
+                              placeholder="CVV"
+                              value={cvv}
+                              onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
+                              className="apx-cvv"
+                            />
+                            <span className="apx-cvv-hint"><Lock size={12} /> 3 digits on back of card</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* UPI */}
+                  <div className={`apx-option column ${paymentMethod === 'upi' ? 'selected' : ''}`} onClick={() => setPaymentMethod('upi')}>
+                    <div className="apx-option-top">
+                      <span className="apx-option-radio">
+                        <input type="radio" name="paymentMethod" value="upi" checked={paymentMethod === 'upi'} onChange={() => setPaymentMethod('upi')} id="pm-upi" />
+                        <span className="apx-radio-dot" />
+                      </span>
+                      <span className="apx-option-name">UPI (Google Pay, PhonePe, Paytm)</span>
+                    </div>
+                    {paymentMethod === 'upi' && (
+                      <div className="apx-option-detail">
+                        <p className="apx-hint">Pay instantly via your UPI app.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* COD */}
+                  <div className={`apx-option column ${paymentMethod === 'cod' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cod')}>
+                    <div className="apx-option-top">
+                      <span className="apx-option-radio">
+                        <input type="radio" name="paymentMethod" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} id="pm-cod" />
+                        <span className="apx-radio-dot" />
+                      </span>
+                      <span className="apx-option-name">Cash on Delivery</span>
+                    </div>
+                    {paymentMethod === 'cod' && (
+                      <div className="apx-option-detail">
+                        <p className="apx-hint">Pay with cash when your order arrives. <span className="apx-hint-sub">(₹40 convenience fee applies)</span></p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <label className="apx-billing">
+                  <input type="checkbox" checked={billingMatchesDelivery} onChange={(e) => setBillingMatchesDelivery(e.target.checked)} />
+                  <span>My billing address is the same as my delivery address.</span>
+                </label>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </section>
+
+        {/* ═══════════ ORDER SUMMARY ═══════════ */}
+        <section className="apx-card apx-summary">
+          <div className="apx-card-head static">
+            <span className="apx-ic"><FileText size={18} /></span>
+            <div className="apx-head-txt">
+              <h2 className="apx-card-title">Order Summary</h2>
+            </div>
+          </div>
+
+          <div className="apx-card-body open">
+            {cartItems.length === 0 ? (
+              <p className="apx-empty">Your cart is empty.</p>
+            ) : (
+              <>
+                <div className="apx-sum-items">
+                  {cartItems.map((item) => {
+                    const compareAt = Number(item.compareAtPrice ?? item.compare_at_price ?? item.originalPrice ?? 0);
+                    const hasCompare = compareAt > item.price;
+                    const pct = hasCompare ? Math.round(((compareAt - item.price) / compareAt) * 100) : 0;
+                    return (
+                      <div className="apx-sum-item" key={item.id}>
+                        <div className="apx-sum-thumb">
+                          {item.image ? <img src={item.image} alt={item.name} /> : <span className="apx-sum-thumb-ph"><Package size={18} /></span>}
+                        </div>
+                        <div className="apx-sum-item-info">
+                          <div className="apx-sum-item-name">{item.name}</div>
+                          <div className="apx-sum-item-price">
+                            {formatPrice(item.price)}
+                            {hasCompare && <span className="apx-sum-compare">{formatPrice(compareAt)}</span>}
+                            {hasCompare && <span className="apx-sum-off">{pct}% OFF</span>}
+                          </div>
+                        </div>
+                        <div className="apx-qty">
+                          <button
+                            type="button"
+                            className="apx-qty-btn"
+                            aria-label="Decrease quantity"
+                            disabled={item.quantity <= 1}
+                            onClick={() => updateQuantity && updateQuantity(item.id, item.quantity - 1)}
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="apx-qty-val">{item.quantity}</span>
+                          <button
+                            type="button"
+                            className="apx-qty-btn"
+                            aria-label="Increase quantity"
+                            onClick={() => updateQuantity && updateQuantity(item.id, item.quantity + 1)}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="apx-sum-totals">
+                  <div className="apx-sum-row">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(subtotal)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="apx-sum-row discount">
+                      <span>Discount {appliedCoupon ? `(${appliedCoupon.code})` : ''}</span>
+                      <span>-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="apx-sum-row">
+                    <span>Delivery Charges{currentStep >= 2 ? ` · ${deliveryLabel}` : ''}</span>
+                    <span className={deliveryCost === 0 ? 'free' : ''}>{deliveryCost === 0 ? 'Free' : formatPrice(deliveryCost)}</span>
+                  </div>
+                  {codFee > 0 && (
+                    <div className="apx-sum-row">
+                      <span>COD Fee</span>
+                      <span>{formatPrice(codFee)}</span>
+                    </div>
+                  )}
+                  <div className="apx-sum-total">
+                    <span>Total</span>
+                    <span>{formatPrice(total)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+
+        <div className="apx-ssl"><Lock size={12} /> Secure 256-bit SSL encryption</div>
       </div>
 
-      {/* FOOTER */}
-      <footer className="checkout-footer">
-        <div className="checkout-footer-inner">
-          <span className="checkout-footer-brand">ANNAPURNA</span>
-          <span className="checkout-footer-copy">© {new Date().getFullYear()} Annapurna Premix. Homemade with love.</span>
+      {/* ── Sticky payment CTA ── */}
+      <div className="apx-sticky">
+        <div className="apx-sticky-inner">
+          <div className="apx-sticky-total">
+            <span className="apx-sticky-label">Total Amount</span>
+            <span className="apx-sticky-amount">{formatPrice(total)}</span>
+          </div>
+          <button
+            type="button"
+            className="apx-pay"
+            disabled={cartItems.length === 0 || isProcessingPayment}
+            onClick={handleStickyCTA}
+          >
+            {currentStep >= 3 && !isProcessingPayment && <Lock size={16} />}
+            <span>{stickyCtaLabel}</span>
+            {!isProcessingPayment && <ArrowRight size={16} />}
+          </button>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

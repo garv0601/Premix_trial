@@ -23,6 +23,7 @@ export default function WhatsAppButton({ hideTooltipOnMobile = false }) {
         // other on narrow screens, so the redundant chip is hidden there while
         // the button (with its own accessible label) still works everywhere.
         <style>{`
+          .wa-float-compact { bottom: calc(94px + env(safe-area-inset-bottom, 0px)) !important; }
           @media (max-width: 480px) {
             .wa-float-compact .wa-tooltip { display: none; }
           }
