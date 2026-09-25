@@ -2,11 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { Lock, Plus, Minus, MapPin, Truck, CreditCard, CheckCircle, Package, Lightbulb, Edit2, Ticket, Gift, ChevronDown, ChevronUp, ChevronRight, ArrowLeft, ArrowRight, FileText } from 'lucide-react';
-import { load as loadCashfreeSdk } from '@cashfreepayments/cashfree-js';
 import { useAuth } from '../../hooks/useAuth';
 import { getAddresses, addAddress, updateAddress } from '../../services/addressService';
 import { getPaymentMethods } from '../../services/paymentService';
-import { placeOrder, createCashfreeOrder } from '../../services/orderService';
+import { placeOrder, createRazorpayOrder } from '../../services/orderService';
 import { getAvailableCoupons } from '../../services/couponService';
 import AddressForm from '../../components/addresses/AddressForm';
 import CouponCelebration from '../../components/common/CouponCelebration';
@@ -58,8 +57,8 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
   const step3Ref = useRef(null);
   const stepRefs = { 1: step1Ref, 2: step2Ref, 3: step3Ref };
 
-  /* ── Cached Cashfree SDK instance (loaded lazily, once) ── */
-  const cashfreeInstanceRef = useRef(null);
+  /* ── Cached Razorpay Checkout script loader (loaded lazily, once) ── */
+  const razorpayScriptRef = useRef(null);
 
   // Cart calculations — same shipping rule + total formula as the Cart page,
   // so both pages always show identical numbers for the same cart/coupon state.
@@ -235,16 +234,25 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
     setTimeout(() => scrollToStep(next), STEP_ANIMATION_MS);
   };
 
-  /* ── Cashfree Payment Handler ── */
-  // Lazily loads (and caches) the Cashfree Checkout SDK instance.
-  // mode: 'sandbox' (TEST/SANDBOX, default) or 'production' — controlled via
-  // VITE_CASHFREE_MODE, never a secret, safe to expose in the frontend.
-  const getCashfreeInstance = async () => {
-    if (cashfreeInstanceRef.current) return cashfreeInstanceRef.current;
-    const mode = import.meta.env.VITE_CASHFREE_MODE || 'sandbox';
-    const instance = await loadCashfreeSdk({ mode });
-    cashfreeInstanceRef.current = instance;
-    return instance;
+  /* ── Razorpay Payment Handler ── */
+  // Lazily loads (and caches) the Razorpay Checkout script. The script exposes
+  // a global `window.Razorpay` constructor. The public Key ID is supplied by
+  // the backend create-order response — no secret is ever used in the browser.
+  const loadRazorpayCheckout = async () => {
+    if (window.Razorpay) return true;
+    if (razorpayScriptRef.current) return razorpayScriptRef.current;
+
+    razorpayScriptRef.current = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => {
+        razorpayScriptRef.current = null;
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+    return razorpayScriptRef.current;
   };
 
   // Supabase's query builder is thenable but has no .catch(); wrap in try/catch
@@ -338,44 +346,35 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
       return;
     }
 
-    // ── ONLINE PAYMENT (Cashfree) FLOW ────────────────────────────────────────
-    let cashfree;
+    // ── ONLINE PAYMENT (Razorpay) FLOW ────────────────────────────────────────
+    // Create the Razorpay order on the backend (server calculates the real amount)
+    let rzpOrderData, rzpKeyId, isMock;
     try {
-      cashfree = await getCashfreeInstance();
-    } catch (err) {
-      console.error('[Checkout] Failed to load Cashfree SDK:', err);
-    }
-    if (!cashfree) {
-      setError('Failed to load payment gateway. Please check your internet connection.');
-      await releaseReservation(sessionId);
-      setIsProcessingPayment(false);
-      return;
-    }
-
-    // Create the Cashfree order on the backend (server calculates the real amount)
-    let cfOrderData;
-    try {
-      const cfResult = await createCashfreeOrder(total, {
+      const rzpResult = await createRazorpayOrder(total, {
         customerName:  selectedAddress?.fullName || user?.user_metadata?.full_name || undefined,
         customerPhone: selectedAddress?.phone || undefined,
       });
-      cfOrderData = cfResult.order;
+      rzpOrderData = rzpResult.order;
+      rzpKeyId     = rzpResult.keyId;
+      isMock       = rzpResult.mock;
     } catch (err) {
-      console.error('[Checkout] Cashfree order creation failed:', err);
+      console.error('[Checkout] Razorpay order creation failed:', err);
       setError(err.message || 'Could not initiate payment. Please try again.');
       await releaseReservation(sessionId);
       setIsProcessingPayment(false);
       return;
     }
 
-    // Confirms the order with the backend, which independently re-verifies
-    // the actual Cashfree payment status before ever marking anything as paid
-    // — a completed checkout() promise alone is never trusted as proof of payment.
-    const confirmCashfreeOrder = async (cashfreeOrderId) => {
+    // Confirms the order with the backend, which independently re-verifies the
+    // Razorpay payment signature and status before ever marking anything as paid
+    // — a completed checkout handler alone is never trusted as proof of payment.
+    const confirmRazorpayOrder = async ({ razorpayOrderId, razorpayPaymentId, razorpaySignature }) => {
       try {
         const result = await placeOrder({
           ...baseOrderPayload,
-          cashfreeOrderId,
+          razorpayOrderId,
+          razorpayPaymentId,
+          razorpaySignature,
         });
 
         // Payment verified & order confirmed — safe to clear the cart now.
@@ -393,43 +392,72 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
         setError(
           "Payment received, but we couldn't complete your order confirmation. " +
           "Please don't make another payment — we're checking your order. " +
-          'Reference: ' + cashfreeOrderId
+          'Reference: ' + razorpayOrderId
         );
         setIsProcessingPayment(false);
       }
     };
 
-    // Mock flow when Cashfree isn't configured on the backend (dev only)
-    if (cfOrderData.mock) {
+    // Mock flow when Razorpay isn't configured on the backend (dev only)
+    if (isMock) {
       console.log('[Checkout] Mock payment flow — confirming directly with backend...');
-      await confirmCashfreeOrder(cfOrderData.order_id);
+      await confirmRazorpayOrder({ razorpayOrderId: rzpOrderData.id });
+      return;
+    }
+
+    // Load the Razorpay Checkout script (global window.Razorpay)
+    const scriptLoaded = await loadRazorpayCheckout();
+    if (!scriptLoaded || !window.Razorpay) {
+      setError('Failed to load payment gateway. Please check your internet connection.');
+      await releaseReservation(sessionId);
+      setIsProcessingPayment(false);
       return;
     }
 
     try {
-      const result = await cashfree.checkout({
-        paymentSessionId: cfOrderData.payment_session_id,
-        redirectTarget:   '_modal',
+      const rzp = new window.Razorpay({
+        key:      rzpKeyId,
+        order_id: rzpOrderData.id,
+        amount:   rzpOrderData.amount,
+        currency: rzpOrderData.currency,
+        name:     'ANNPURNA',
+        prefill: {
+          name:    selectedAddress?.fullName || user?.user_metadata?.full_name || undefined,
+          email:   user?.email || undefined,
+          contact: selectedAddress?.phone || undefined,
+        },
+        // Payment attempt completed — the backend verifies the real status with
+        // Razorpay before confirming the order.
+        handler: async (response) => {
+          console.log('[Checkout] Razorpay payment completed — confirming with backend...');
+          await confirmRazorpayOrder({
+            razorpayOrderId:   response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          });
+        },
+        modal: {
+          // The customer dismissed the checkout without completing payment.
+          ondismiss: async () => {
+            console.log('[Checkout] Razorpay checkout closed — releasing reservation...');
+            await releaseReservation(sessionId);
+            setIsProcessingPayment(false);
+          },
+        },
       });
 
-      if (result.paymentDetails) {
-        // Payment attempt completed (irrespective of outcome) — the backend
-        // verifies the real status with Cashfree before confirming the order.
-        console.log('[Checkout] Cashfree payment attempt completed — confirming with backend...');
-        await confirmCashfreeOrder(cfOrderData.order_id);
-      } else if (result.redirect) {
-        // Exceptional case (e.g. in-app browser) — Cashfree will redirect the
-        // customer to the return URL once the payment completes.
-        console.log('[Checkout] Cashfree payment will redirect...');
-      } else {
-        // result.error — the customer closed the checkout popup, or an error
-        // occurred before any payment attempt completed.
-        console.log('[Checkout] Cashfree checkout closed — releasing reservation...');
+      // A payment attempt failed before completion — surface the error and
+      // release the reservation so the customer can retry.
+      rzp.on('payment.failed', async (response) => {
+        console.error('[Checkout] Razorpay payment failed:', response?.error);
+        setError(response?.error?.description || 'Payment failed. Please try again.');
         await releaseReservation(sessionId);
         setIsProcessingPayment(false);
-      }
+      });
+
+      rzp.open();
     } catch (err) {
-      console.error('[Checkout] Cashfree checkout error:', err);
+      console.error('[Checkout] Razorpay checkout error:', err);
       setError('Payment could not be initiated. Please try again.');
       await releaseReservation(sessionId);
       setIsProcessingPayment(false);
@@ -874,7 +902,7 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                             </div>
                           ))
                         ) : (
-                          <p className="apx-hint">No saved cards. Cashfree will securely collect your card details.</p>
+                          <p className="apx-hint">No saved cards. Razorpay will securely collect your card details.</p>
                         )}
                         {savedCards.length > 0 && selectedCardId && (
                           <div className="apx-cvv-row">

@@ -189,7 +189,7 @@ function calculateTotals(validatedItems, coupon, deliveryMethod, paymentMethod) 
  * @param {object}   params.shippingAddress  Address object
  * @param {string}   [params.couponCode]     Optional coupon code
  * @param {string}   [params.sessionId]      Inventory reservation session ID
- * @param {string}   [params.transactionId]  Cashfree payment ID / cf_payment_id (for online payments)
+ * @param {string}   [params.transactionId]  Razorpay payment id (for online payments)
  * @param {string}   [params.notes]          Customer notes
  */
 export async function createOrder({
@@ -347,7 +347,7 @@ export async function createOrder({
   const paymentPayload = {
     order_id:         order.id,
     customer_id:      customerId,
-    payment_provider: isCOD ? 'cod' : 'cashfree',
+    payment_provider: isCOD ? 'cod' : 'razorpay',
     transaction_id:   transactionId || `COD-${order.id}`,
     amount:           totalAmount,
     currency:         CURRENCY,
@@ -437,23 +437,23 @@ export async function previewCoupon(couponCode, subtotal, customerId) {
 }
 
 /**
- * Reconcile a payment/order record from a verified Cashfree webhook event.
+ * Reconcile a payment/order record from a verified Razorpay webhook event.
  *
  * IMPORTANT: this only ever UPDATES an existing payments/orders row that was
  * already created by the primary placeOrder flow — it never creates a new
  * order. A webhook payload has no cart/address/customer context to create an
  * order with, and the primary flow already verifies payment status directly
- * against the Cashfree API before creating the order in the first place.
+ * against the Razorpay API before creating the order in the first place.
  *
  * Idempotent: repeated/duplicate webhook deliveries for the same terminal
  * status are safely ignored, and a stale "pending" event can never downgrade
  * an already-paid or already-refunded record.
  *
  * @param {object} params
- * @param {string} params.transactionId    Cashfree cf_payment_id (matches payments.transaction_id)
+ * @param {string} params.transactionId    Razorpay payment id (matches payments.transaction_id)
  * @param {string} params.newPaymentStatus One of PAYMENT_STATUS values
  */
-export async function syncPaymentFromCashfreeWebhook({ transactionId, newPaymentStatus }) {
+export async function syncPaymentFromRazorpayWebhook({ transactionId, newPaymentStatus }) {
   if (!supabaseAdmin) return { updated: false, reason: 'db_not_configured' };
   if (!transactionId)  return { updated: false, reason: 'missing_transaction_id' };
 

@@ -98,18 +98,19 @@ export async function placeOrder(orderPayload) {
 }
 
 /**
- * Create a Cashfree order (payment session) via the backend for online payments.
+ * Create a Razorpay order via the backend for online payments.
  *
  * @param {number} amount  Total amount in INR
  * @param {object} [customerDetails]  Optional { customerName, customerPhone } used to
- *                                    prefill the Cashfree checkout (never sensitive/secret).
- * @returns {Promise<object>} Cashfree order object ({ order_id, payment_session_id, ... })
+ *                                    prefill the Razorpay checkout (never sensitive/secret).
+ * @returns {Promise<object>} Backend response ({ order, keyId, mock? }) where
+ *                            order is the Razorpay order object ({ id, amount, currency, ... })
  */
-export async function createCashfreeOrder(amount, customerDetails = {}) {
+export async function createRazorpayOrder(amount, customerDetails = {}) {
   const token = await getAuthToken();
   if (!token) throw new Error('Not authenticated');
 
-  const res = await fetch(`${API_BASE}/orders/create-cashfree-order`, {
+  const res = await fetch(`${API_BASE}/orders/create-razorpay-order`, {
     method:  'POST',
     headers: {
       'Content-Type': 'application/json',
