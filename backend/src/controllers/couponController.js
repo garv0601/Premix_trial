@@ -8,7 +8,7 @@
  */
 
 import { verifyUser } from '../config/supabase.js';
-import { previewCoupon } from '../services/orderService.js';
+import { previewCoupon, listAvailableCoupons } from '../services/orderService.js';
 
 function extractBearerToken(req) {
   const auth = req.headers.authorization;
@@ -43,5 +43,24 @@ export async function validateCouponCode(req, res) {
   } catch (err) {
     // Validation failures are expected/user-facing (invalid, expired, already used, etc.)
     res.status(400).json({ success: false, message: err.message || 'Invalid coupon code' });
+  }
+}
+
+/**
+ * GET /api/coupons/available
+ * Returns the coupons currently offerable to the signed-in customer for the
+ * checkout "Available offers" discovery section. Requires authentication.
+ */
+export async function getAvailableCoupons(req, res) {
+  try {
+    const token = extractBearerToken(req);
+    if (!token) return res.status(401).json({ success: false, message: 'Unauthorised' });
+
+    const user = await verifyUser(token);
+    const coupons = await listAvailableCoupons(user.id);
+    res.json({ success: true, coupons });
+  } catch (err) {
+    console.error('[couponController] getAvailableCoupons error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch available coupons', coupons: [] });
   }
 }

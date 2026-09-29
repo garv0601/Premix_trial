@@ -74,10 +74,6 @@ export async function deleteMyAccount(req, res, next) {
           console.error('[AccountController] deleted_customers archive insert failed:', archiveError.message);
         }
       } else if (deleteProfileError.code === '23503') {
-        // Foreign-key violation — other rows (orders/payments/etc.) still
-        // reference this profile. Keep the row but mark it inactive so it
-        // never shows as "Active" again; it still contributes to Total
-        // Customers as a live row, so no archive insert is needed.
         const { error: deactivateError } = await supabaseAdmin
           .from('Profiles')
           .update({ Status: 'inactive', Updated_at: new Date().toISOString() })

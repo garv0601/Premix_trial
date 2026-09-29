@@ -437,6 +437,86 @@ export async function previewCoupon(couponCode, subtotal, customerId) {
 }
 
 /**
+ * List the coupons that are currently offerable to a signed-in customer, for
+ * the checkout "Available offers" discovery section.
+ *
+ * This is the authoritative source used by the customer frontend: it reads the
+ * SAME `public.coupons` table the order/validation logic uses, via the service
+ * role client (the coupons table is RLS-gated to admins, so customers cannot
+ * read it directly). It is purely a discovery aid — every real rule (minimum
+ * order, exact discount, per-customer usage, usage limit) is still enforced
+ * server-side when the coupon is actually applied in `validateCoupon`.
+ *
+ * Filtering here mirrors the "hard" availability rules so we never surface a
+ * coupon that could never be applied:
+ *   - is_active = true (Admin deactivation hides it)
+ *   - show_as_offer = true (Admin "Show as offer" toggle; treated as true when
+ *     the column is absent so behaviour is unchanged before the migration runs)
+ *   - already started (starts_at in the past / null)
+ *   - not expired (expires_at in the future / null)
+ *   - global usage limit not yet reached
+ *   - not already used by THIS customer
+ *
+ * Minimum-order eligibility is intentionally NOT filtered out — locked coupons
+ * are still returned so the UI can show "Add ₹X more to avail". The frontend
+ * decides eligible vs. locked from the live cart subtotal.
+ */
+export async function listAvailableCoupons(customerId) {
+  const nowIso = new Date().toISOString();
+
+  // Select '*' (not an explicit column list) so this keeps working whether or
+  // not the show_as_offer column exists yet — the visibility filter below
+  // degrades gracefully to "visible" when the column is absent.
+  const { data: coupons, error } = await supabaseAdmin
+    .from('coupons')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('[OrderService] listAvailableCoupons error:', error);
+    throw new Error('Failed to fetch available coupons');
+  }
+
+  const valid = (coupons || []).filter((c) => {
+    // show_as_offer === false hides it; undefined (pre-migration) => visible.
+    const visibleAsOffer = c.show_as_offer !== false;
+    const started        = !c.starts_at  || c.starts_at  <= nowIso;
+    const notExpired     = !c.expires_at || c.expires_at >= nowIso;
+    const withinUsageCap = !c.usage_limit || (c.used_count || 0) < c.usage_limit;
+    return visibleAsOffer && started && notExpired && withinUsageCap;
+  });
+
+  // Exclude coupons this customer has already used (per-customer single use),
+  // so we never suggest a coupon whose apply would be rejected.
+  let usedCouponIds = new Set();
+  if (customerId && valid.length > 0) {
+    const { data: usage, error: usageError } = await supabaseAdmin
+      .from('coupon_usage')
+      .select('coupon_id')
+      .eq('customer_id', customerId)
+      .in('coupon_id', valid.map((c) => c.id));
+
+    if (usageError) {
+      console.error('[OrderService] listAvailableCoupons usage error:', usageError);
+    } else {
+      usedCouponIds = new Set((usage || []).map((u) => u.coupon_id));
+    }
+  }
+
+  return valid
+    .filter((c) => !usedCouponIds.has(c.id))
+    .map((c) => ({
+      code:                 c.code,
+      description:          c.description || null,
+      discount_type:        c.discount_type,
+      discount_value:       c.discount_value,
+      minimum_order_amount: c.minimum_order_amount ?? 0,
+      maximum_discount:     c.maximum_discount ?? null,
+    }));
+}
+
+/**
  * Reconcile a payment/order record from a verified Razorpay webhook event.
  *
  * IMPORTANT: this only ever UPDATES an existing payments/orders row that was

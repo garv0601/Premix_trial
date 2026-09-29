@@ -262,6 +262,7 @@ coupon_usage.order_id    → orders.id
 | `starts_at`            |              |
 | `expires_at`           |              |
 | `is_active`            |              |
+| `show_as_offer`        | boolean, DEFAULT true — when true, an active coupon is surfaced to customers in the Checkout "offers available right now" list. Independent of `is_active`. See `admin/migrations/2026-09-28_add_show_as_offer_to_coupons.sql` |
 | `created_at`           |              |
 | `updated_at`           |              |
 

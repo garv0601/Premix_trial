@@ -19,6 +19,7 @@ const INITIAL_FORM = {
   starts_at: '',
   expires_at: '',
   is_active: true,
+  show_as_offer: true,
 };
 
 export default function AddCouponModal({ isOpen, onClose, onSubmit }) {
@@ -142,6 +143,18 @@ export default function AddCouponModal({ isOpen, onClose, onSubmit }) {
                     <label className="cpm-label">Expiry Date</label>
                     <input className="cpm-input" type="date" value={form.expires_at} onChange={(e) => handleChange('expires_at', e.target.value)} />
                   </div>
+                </div>
+
+                <div className="cpm-toggle-field">
+                  <div className="cpm-toggle-text">
+                    <span className="cpm-toggle-title">Show as offer to customers</span>
+                    <span className="cpm-toggle-desc">When on, this coupon appears in the checkout “offers available right now” list. Turn off to keep it usable by code only.</span>
+                  </div>
+                  <label className="cpm-switch">
+                    <input type="checkbox" checked={!!form.show_as_offer} onChange={(e) => handleChange('show_as_offer', e.target.checked)} />
+                    <span className="cpm-switch-track" />
+                    <span className="cpm-switch-thumb" />
+                  </label>
                 </div>
               </div>
 

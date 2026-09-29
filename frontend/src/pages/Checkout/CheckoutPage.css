@@ -605,6 +605,29 @@
   background: var(--bg-surface-2);
   margin-bottom: 8px;
 }
+.apx-offer.is-locked {
+  background: var(--bg-surface-2);
+}
+.apx-offer.is-locked .apx-offer-ic,
+.apx-offer.is-locked .apx-offer-code,
+.apx-offer.is-locked .apx-offer-desc {
+  opacity: 0.55;
+}
+.apx-offer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 3px;
+}
+.apx-offer-status.is-ok {
+  color: #2F8B57;
+}
+.apx-offer-status.is-locked {
+  color: #C0392B;
+  font-weight: 600;
+}
 .apx-offer-ic {
   display: inline-flex;
   align-items: center;
@@ -681,6 +704,46 @@
   font-size: 14px;
   font-weight: 700;
   color: var(--color-tertiary);
+}
+
+/* ── Coupon header actions (Remove + expand toggle) ── */
+.apx-coupon-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Applied coupon card (inside the discovery list) ── */
+.apx-offer.is-applied {
+  border-color: rgba(47, 139, 87, 0.35);
+  background: rgba(47, 139, 87, 0.08);
+  opacity: 1;
+}
+.apx-offer.is-applied .apx-offer-ic {
+  background: rgba(47, 139, 87, 0.16);
+  color: #2F8B57;
+}
+.apx-offer-apply.is-applied,
+.apx-offer.is-applied .apx-offer-apply {
+  border-color: rgba(47, 139, 87, 0.4);
+  color: #2F8B57;
+  background: rgba(47, 139, 87, 0.10);
+}
+
+/* ── Empty state ── */
+.apx-offers-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 18px 14px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-light);
+  font-size: 13.5px;
+  font-weight: 500;
 }
 
 /* ── Order summary ── */
@@ -971,6 +1034,44 @@
   }
   .apx-coupon-apply {
     padding: 0 16px;
+  }
+  .apx-offer {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .apx-offer-info {
+    flex-basis: calc(100% - 44px);
+  }
+  .apx-offer-apply {
+    margin-left: 44px;
+  }
+}
+
+/* ── Offer cards wrap neatly on phones ── */
+@media (max-width: 480px) {
+  .apx-offer {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 12px;
+  }
+  .apx-offer-info {
+    flex-basis: calc(100% - 44px);
+  }
+  .apx-offer-code {
+    font-size: 13.5px;
+  }
+  .apx-offer-desc {
+    font-size: 12px;
+  }
+  .apx-offer-apply {
+    margin-left: 44px;
+    padding: 7px 18px;
+  }
+  .apx-offers-title {
+    font-size: 11.5px;
+  }
+  .apx-coupon-head-actions {
+    gap: 8px;
   }
 }
 

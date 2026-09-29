@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Plus, Minus, MapPin, Truck, CreditCard, CheckCircle, Package, Lightbulb, Edit2, Ticket, Gift, ChevronDown, ChevronUp, ChevronRight, ArrowLeft, ArrowRight, FileText } from 'lucide-react';
+import { Lock, Plus, Minus, MapPin, Truck, CreditCard, CheckCircle, Package, Lightbulb, Edit2, Ticket, Gift, ChevronDown, ChevronUp, ArrowLeft, ArrowRight, FileText } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getAddresses, addAddress, updateAddress } from '../../services/addressService';
 import { getPaymentMethods } from '../../services/paymentService';
@@ -510,12 +510,91 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
     : 'Cash on Delivery';
 
   const formatOfferLine = (c) => {
-    const value = c.discount_type === 'percent' || c.discount_type === 'percentage'
-      ? `${Number(c.discount_value)}% off`
-      : `${formatPrice(c.discount_value)} off`;
-    const min = c.minimum_order_amount ? ` on orders above ${formatPrice(c.minimum_order_amount)}` : '';
-    return c.description || `Get ${value}${min}`;
+    if (c.description) return c.description;
+    const isPercent = c.discount_type === 'percent' || c.discount_type === 'percentage';
+    const value = isPercent ? `${Number(c.discount_value)}% OFF` : `${formatPrice(c.discount_value)} OFF`;
+    const cap = isPercent && c.maximum_discount ? ` up to ${formatPrice(c.maximum_discount)}` : '';
+    return `Get ${value}${cap}`;
   };
+
+  /* Group the available offers for the discovery UI:
+     1. the coupon already applied (if any)   → "Applied"
+     2. currently-eligible coupons             → eligible first
+     3. coupons needing a larger cart          → locked (dimmed)
+     Backend order is preserved within each group. Eligibility is derived from
+     the live cart subtotal so it updates reactively; the backend still enforces
+     every rule on apply. */
+  const offerGroups = useMemo(() => {
+    const appliedCode = appliedCoupon?.code?.toUpperCase() || null;
+
+    const decorated = (availableOffers || []).map((offer) => {
+      const minOrder = Number(offer.minimum_order_amount) || 0;
+      const eligible = subtotal >= minOrder;
+      const remaining = Math.max(0, Math.ceil(minOrder - subtotal));
+      const isApplied = !!appliedCode && offer.code?.toUpperCase() === appliedCode;
+      return { offer, eligible, remaining, isApplied };
+    });
+
+    const applied = decorated.filter((d) => d.isApplied);
+
+    // If the applied coupon isn't in the available list (e.g. filtered out
+    // after being applied), still surface it from the applied-coupon state so
+    // checkout always reflects the shared source of truth.
+    if (appliedCode && applied.length === 0) {
+      applied.push({
+        offer: {
+          code: appliedCoupon.code,
+          description: null,
+          discount_type: appliedCoupon.discountType,
+          discount_value: appliedCoupon.discountValue,
+          maximum_discount: null,
+        },
+        eligible: true,
+        remaining: 0,
+        isApplied: true,
+      });
+    }
+
+    const others = decorated
+      .filter((d) => !d.isApplied)
+      .sort((a, b) => (a.eligible === b.eligible ? 0 : a.eligible ? -1 : 1));
+
+    return { applied, others };
+  }, [availableOffers, subtotal, appliedCoupon]);
+
+  const renderOfferCard = ({ offer, eligible, remaining, isApplied }) => (
+    <div
+      className={`apx-offer ${isApplied ? 'is-applied' : ''} ${!eligible && !isApplied ? 'is-locked' : ''}`}
+      key={offer.code}
+    >
+      <span className="apx-offer-ic"><Gift size={16} /></span>
+      <div className="apx-offer-info">
+        <span className="apx-offer-code">{offer.code}</span>
+        <span className="apx-offer-desc">{formatOfferLine(offer)}</span>
+        {isApplied ? (
+          <span className="apx-offer-status is-ok">
+            <CheckCircle size={13} /> Applied
+          </span>
+        ) : eligible ? (
+          <span className="apx-offer-status is-ok">
+            <CheckCircle size={13} /> Eligible
+          </span>
+        ) : (
+          <span className="apx-offer-status is-locked">
+            <Lock size={13} /> Add {formatPrice(remaining)} more to avail this coupon
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        className="apx-offer-apply"
+        onClick={() => { if (!isApplied) handleApplyCoupon(offer.code); }}
+        disabled={coupon?.applying || isApplied || !eligible}
+      >
+        {isApplied ? 'Applied' : 'Apply'}
+      </button>
+    </div>
+  );
 
   const expand = {
     hidden: { opacity: 0, height: 0 },
@@ -744,10 +823,10 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
         </section>
 
         {/* ═══════════ APPLY COUPON / OFFERS ═══════════ */}
-        <section className={`apx-card apx-coupon ${appliedCoupon ? 'is-done' : ''} ${couponExpanded && !appliedCoupon ? 'is-active' : ''}`}>
+        <section className={`apx-card apx-coupon ${appliedCoupon ? 'is-done' : ''} ${couponExpanded ? 'is-active' : ''}`}>
           <div
-            className={`apx-card-head ${!appliedCoupon ? 'clickable' : ''}`}
-            onClick={() => { if (!appliedCoupon) setCouponExpanded((v) => !v); }}
+            className="apx-card-head clickable"
+            onClick={() => setCouponExpanded((v) => !v)}
           >
             <span className="apx-ic">
               {appliedCoupon ? <CheckCircle size={18} /> : <Ticket size={18} />}
@@ -755,43 +834,27 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
             <div className="apx-head-txt">
               <h2 className="apx-card-title">{appliedCoupon ? 'Coupon Applied' : 'Apply Coupon'}</h2>
               <p className="apx-card-sub">
-                {appliedCoupon ? `${appliedCoupon.code} applied` : 'Have a coupon?'}
+                {appliedCoupon ? `${appliedCoupon.code} applied` : 'Have a coupon? See available offers'}
               </p>
             </div>
-            {appliedCoupon ? (
-              <button
-                type="button"
-                className="apx-change danger"
-                onClick={(e) => { e.stopPropagation(); handleRemoveCoupon(); }}
-              >
-                Remove
-              </button>
-            ) : (
+            <div className="apx-coupon-head-actions">
+              {appliedCoupon && (
+                <button
+                  type="button"
+                  className="apx-change danger"
+                  onClick={(e) => { e.stopPropagation(); handleRemoveCoupon(); }}
+                >
+                  Remove
+                </button>
+              )}
               <span className="apx-change as-toggle">
-                Apply {couponExpanded ? <ChevronUp size={15} /> : <ChevronRight size={15} />}
+                {couponExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
               </span>
-            )}
+            </div>
           </div>
 
           <AnimatePresence initial={false}>
-            {appliedCoupon ? (
-              <motion.div
-                key="coupon-applied"
-                className="apx-card-body"
-                variants={expand}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <div className="apx-applied">
-                  <div className="apx-applied-left">
-                    <Gift size={16} />
-                    <span className="apx-applied-code">{appliedCoupon.code}</span>
-                  </div>
-                  <span className="apx-applied-amt">-{formatPrice(discountAmount)}</span>
-                </div>
-              </motion.div>
-            ) : couponExpanded ? (
+            {couponExpanded && (
               <motion.div
                 key="coupon-body"
                 className="apx-card-body"
@@ -800,51 +863,58 @@ export default function CheckoutPage({ cartItems = [], subtotal = 0, updateQuant
                 animate="visible"
                 exit="exit"
               >
-                <div className="apx-coupon-input-row">
-                  <input
-                    type="text"
-                    className="apx-coupon-input"
-                    placeholder="Enter coupon code"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
-                  />
-                  <button
-                    type="button"
-                    className="apx-coupon-apply"
-                    onClick={() => handleApplyCoupon()}
-                    disabled={coupon?.applying || !couponInput.trim()}
-                  >
-                    {coupon?.applying ? 'Applying…' : 'Apply'}
-                  </button>
-                </div>
+                {/* Manual code entry — only when no coupon is applied yet */}
+                {!appliedCoupon && (
+                  <>
+                    <div className="apx-coupon-input-row">
+                      <input
+                        type="text"
+                        className="apx-coupon-input"
+                        placeholder="Enter coupon code"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
+                      />
+                      <button
+                        type="button"
+                        className="apx-coupon-apply"
+                        onClick={() => handleApplyCoupon()}
+                        disabled={coupon?.applying || !couponInput.trim()}
+                      >
+                        {coupon?.applying ? 'Applying…' : 'Apply'}
+                      </button>
+                    </div>
+                    {coupon?.error && <p className="apx-coupon-error">{coupon.error}</p>}
+                  </>
+                )}
 
-                {coupon?.error && <p className="apx-coupon-error">{coupon.error}</p>}
-
-                {availableOffers.length > 0 && (
+                {/* Applied coupon group (shared source of truth with the Cart) */}
+                {offerGroups.applied.length > 0 && (
                   <div className="apx-offers">
-                    <h3 className="apx-offers-title">Available offers</h3>
-                    {availableOffers.map((offer) => (
-                      <div className="apx-offer" key={offer.code}>
-                        <span className="apx-offer-ic"><Gift size={16} /></span>
-                        <div className="apx-offer-info">
-                          <span className="apx-offer-code">{offer.code}</span>
-                          <span className="apx-offer-desc">{formatOfferLine(offer)}</span>
-                        </div>
-                        <button
-                          type="button"
-                          className="apx-offer-apply"
-                          onClick={() => handleApplyCoupon(offer.code)}
-                          disabled={coupon?.applying}
-                        >
-                          Apply
-                        </button>
-                      </div>
-                    ))}
+                    <h3 className="apx-offers-title">Applied</h3>
+                    {offerGroups.applied.map(renderOfferCard)}
+                  </div>
+                )}
+
+                {/* Other coupons available to discover */}
+                {offerGroups.others.length > 0 && (
+                  <div className="apx-offers">
+                    <h3 className="apx-offers-title">
+                      {offerGroups.applied.length > 0 ? 'Other Available Coupons' : 'Available Coupons'}
+                    </h3>
+                    {offerGroups.others.map(renderOfferCard)}
+                  </div>
+                )}
+
+                {/* Clean empty state when nothing is offerable */}
+                {offerGroups.applied.length === 0 && offerGroups.others.length === 0 && (
+                  <div className="apx-offers-empty">
+                    <Ticket size={18} />
+                    <span>No offers available right now</span>
                   </div>
                 )}
               </motion.div>
-            ) : null}
+            )}
           </AnimatePresence>
         </section>
 

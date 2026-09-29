@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import HomePage from './pages/Home/HomePage';
@@ -52,6 +52,31 @@ export function App() {
 
   const cart = useCart();
   const coupon = useCoupon();
+
+  // A coupon's discount is calculated against the cart subtotal at the moment
+  // it is applied. If the cart contents later change (item added/removed,
+  // quantity edited) that discount becomes stale and would be charged against
+  // a different price. To prevent this glitch we drop any applied coupon as
+  // soon as the cart composition changes, so the user re-applies against the
+  // fresh subtotal. Emptying the cart also clears the coupon entirely.
+  const cartSignature = useMemo(
+    () => cart.cartItems.map((item) => `${item.id}:${item.quantity}`).join('|'),
+    [cart.cartItems]
+  );
+  const couponCartSignatureRef = useRef(cartSignature);
+  const { appliedCoupon, removeCoupon } = coupon;
+
+  useEffect(() => {
+    if (cart.cartItems.length === 0) {
+      if (appliedCoupon) removeCoupon();
+      couponCartSignatureRef.current = cartSignature;
+      return;
+    }
+    if (cartSignature !== couponCartSignatureRef.current) {
+      if (appliedCoupon) removeCoupon();
+      couponCartSignatureRef.current = cartSignature;
+    }
+  }, [cartSignature, cart.cartItems.length, appliedCoupon, removeCoupon]);
 
   // Shared cart handler — adds to cart without opening drawer.
   // Guards against sold-out products: stock_quantity must be > 0.

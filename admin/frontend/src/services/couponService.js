@@ -31,6 +31,9 @@ function enrichCoupon(row) {
     ...row,
     used_count: row.used_count ?? 0,
     minimum_order_amount: row.minimum_order_amount ?? 0,
+    // Defaults to true when the column is absent (pre-migration) so the toggle
+    // reads as "shown" until an admin explicitly hides the coupon.
+    show_as_offer: row.show_as_offer !== false,
     status: computeStatus(row),
   };
 }
@@ -46,8 +49,19 @@ function toDbPayload(formData) {
     starts_at: formData.starts_at || null,
     expires_at: formData.expires_at || null,
     is_active: formData.is_active !== undefined ? !!formData.is_active : true,
+    show_as_offer: formData.show_as_offer !== undefined ? !!formData.show_as_offer : true,
     updated_at: new Date().toISOString(),
   };
+}
+
+/**
+ * Postgres reports an unknown column with SQLSTATE 42703. Until the
+ * `show_as_offer` migration has been applied, writes that include that column
+ * would fail — so we transparently retry once without it. This keeps the Admin
+ * Coupons page fully functional before and after the migration.
+ */
+function isUndefinedColumnError(error, column) {
+  return !!error && (error.code === '42703' || (error.message || '').includes(column));
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -91,11 +105,21 @@ export async function getCouponStats() {
 
 export async function createCoupon(formData) {
   const payload = toDbPayload(formData);
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('coupons')
     .insert(payload)
     .select('*')
     .single();
+
+  // Retry without show_as_offer if the migration hasn't been applied yet.
+  if (error && isUndefinedColumnError(error, 'show_as_offer')) {
+    const { show_as_offer, ...legacyPayload } = payload;
+    ({ data, error } = await supabase
+      .from('coupons')
+      .insert(legacyPayload)
+      .select('*')
+      .single());
+  }
 
   if (error) {
     console.error('[couponService] createCoupon error:', error);
@@ -107,12 +131,23 @@ export async function createCoupon(formData) {
 
 export async function updateCoupon(id, formData) {
   const payload = toDbPayload(formData);
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('coupons')
     .update(payload)
     .eq('id', id)
     .select('*')
     .single();
+
+  // Retry without show_as_offer if the migration hasn't been applied yet.
+  if (error && isUndefinedColumnError(error, 'show_as_offer')) {
+    const { show_as_offer, ...legacyPayload } = payload;
+    ({ data, error } = await supabase
+      .from('coupons')
+      .update(legacyPayload)
+      .eq('id', id)
+      .select('*')
+      .single());
+  }
 
   if (error) {
     console.error('[couponService] updateCoupon error:', error);
