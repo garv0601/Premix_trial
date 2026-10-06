@@ -1,5 +1,3 @@
-// Must be the first import — populates process.env before any other module
-// (config/razorpay.js, config/supabase.js, config/config.js) reads it at import time.
 import './config/env.js';
 
 import express from 'express';
@@ -7,6 +5,7 @@ import cors from 'cors';
 import { config } from './config/config.js';
 import { logger } from './middleware/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { securityHeaders } from './middleware/security.js';
 import productRoutes from './routes/productRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
@@ -19,10 +18,8 @@ import { razorpayConfigured } from './config/razorpay.js';
 const app = express();
 
 // Middlewares
+app.use(securityHeaders);
 app.use(cors({ origin: config.corsOrigin }));
-// Capture the exact raw request body alongside the parsed JSON body — the
-// Razorpay webhook signature is computed over the raw (unparsed) payload,
-// so req.rawBody is needed purely for that verification step.
 app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf.toString('utf8'); },
 }));
@@ -38,11 +35,6 @@ app.use(`${config.apiPrefix}/account`,       accountRouter);
 app.use(`${config.apiPrefix}/coupons`,       couponRouter);
 app.use(`${config.apiPrefix}/admin/customers`, adminCustomerRouter);
 
-// Health check endpoint
-// `razorpayConfigured` is a boolean only (never the keys) — used to verify that
-// the RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET env vars are actually applied on the
-// deployed host. If this is false in production, online payments fall back to the
-// dev mock flow and the Razorpay checkout window never opens.
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',

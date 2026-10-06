@@ -146,6 +146,9 @@ export async function placeOrder(req, res, next) {
     }
 
     let transactionId = null;
+    // Amount (in paise) actually captured at Razorpay — used server-side to
+    // ensure the order total is not larger than what the customer really paid.
+    let paidAmountPaise = null;
 
     // For online payments: verify the Razorpay payment before creating the order
     if (paymentMethod !== 'cod') {
@@ -197,6 +200,7 @@ export async function placeOrder(req, res, next) {
         }
 
         transactionId = String(successfulPayment.id);
+        paidAmountPaise = Number(successfulPayment.amount);
         console.log(`[OrderController] Razorpay payment verified: ${transactionId} for order: ${razorpayOrderId}`);
       } else {
         // Razorpay not configured (dev/mock mode) — accept the mock reference as-is
@@ -216,6 +220,7 @@ export async function placeOrder(req, res, next) {
       sessionId,
       transactionId,
       notes,
+      paidAmountPaise,
     });
 
     console.log(`[OrderController] Order confirmed: ${order.id} for customer: ${customerId}`);

@@ -191,6 +191,10 @@ function calculateTotals(validatedItems, coupon, deliveryMethod, paymentMethod) 
  * @param {string}   [params.sessionId]      Inventory reservation session ID
  * @param {string}   [params.transactionId]  Razorpay payment id (for online payments)
  * @param {string}   [params.notes]          Customer notes
+ * @param {number}   [params.paidAmountPaise] Amount actually captured at Razorpay (in paise).
+ *                                            When provided (online payments), the order is only
+ *                                            created if this covers the server-calculated total —
+ *                                            blocks a tampered create-razorpay-order `amount`.
  */
 export async function createOrder({
   customerId,
@@ -202,6 +206,7 @@ export async function createOrder({
   sessionId,
   transactionId,
   notes,
+  paidAmountPaise,
 }) {
   console.log(`[OrderService] Creating order for customer: ${customerId}, method: ${paymentMethod}`);
 
@@ -251,6 +256,19 @@ export async function createOrder({
     calculateTotals(validatedItems, coupon, deliveryMethod, paymentMethod);
 
   console.log(`[OrderService] Totals — subtotal: ${subtotal}, discount: ${discountAmount}, shipping: ${shippingAmount}, tax: ${taxAmount}, total: ${totalAmount}`);
+
+  // 4b. For online payments, confirm the amount actually captured at Razorpay
+  // covers the server-calculated total. The `amount` used to create the
+  // Razorpay order comes from the frontend, so without this an attacker could
+  // pay a tiny amount and still receive a full-value order. Underpayment is
+  // rejected; exact/over payment (never produced by the legit flow) is allowed.
+  if (paidAmountPaise !== undefined && paidAmountPaise !== null) {
+    const expectedTotalPaise = Math.round(totalAmount * 100);
+    if (Number(paidAmountPaise) < expectedTotalPaise) {
+      console.error(`[OrderService] Payment amount mismatch — paid(paise): ${paidAmountPaise}, expected(paise): ${expectedTotalPaise}`);
+      throw new Error('Payment amount does not match order total');
+    }
+  }
 
   // 5. Duplicate order check for online payments (idempotency)
   if (transactionId) {

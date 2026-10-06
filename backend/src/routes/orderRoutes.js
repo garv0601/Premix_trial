@@ -30,14 +30,24 @@ import {
   adminGetTopSellingProducts,
 } from '../controllers/orderController.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { createRateLimiter } from '../middleware/security.js';
 
 export const orderRouter      = Router();
 export const adminOrderRouter = Router();
 
+// Generous per-IP limits on payment initiation + order placement — enough for
+// normal checkout retries, but a ceiling against automated abuse. The Razorpay
+// webhook is intentionally NOT limited (Razorpay retries and needs 200s).
+const orderWriteLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20,
+  message: 'Too many requests. Please wait a moment and try again.',
+});
+
 // ── Customer routes ──────────────────────────────────────────────────────────
-orderRouter.post('/create-razorpay-order', createRazorpayOrder);
+orderRouter.post('/create-razorpay-order', orderWriteLimiter, createRazorpayOrder);
 orderRouter.post('/razorpay-webhook',      razorpayWebhook);
-orderRouter.post('/',                      placeOrder);
+orderRouter.post('/',                      orderWriteLimiter, placeOrder);
 orderRouter.get('/',                       getMyOrders);
 orderRouter.get('/:orderId',               getMyOrder);
 

@@ -7,8 +7,16 @@
 
 import { Router } from 'express';
 import { validateCouponCode, getAvailableCoupons } from '../controllers/couponController.js';
+import { createRateLimiter } from '../middleware/security.js';
 
 export const couponRouter = Router();
 
-couponRouter.post('/validate', validateCouponCode);
+// Prevent coupon-code brute forcing while staying generous for real shoppers.
+const couponValidateLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  message: 'Too many coupon attempts. Please slow down and try again shortly.',
+});
+
+couponRouter.post('/validate', couponValidateLimiter, validateCouponCode);
 couponRouter.get('/available', getAvailableCoupons);
