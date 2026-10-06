@@ -13,6 +13,7 @@ import { orderRouter, adminOrderRouter } from './routes/orderRoutes.js';
 import { accountRouter } from './routes/accountRoutes.js';
 import { couponRouter } from './routes/couponRoutes.js';
 import { adminCustomerRouter } from './routes/customerRoutes.js';
+import { authRouter } from './routes/authRoutes.js';
 import { razorpayConfigured } from './config/razorpay.js';
 
 const app = express();
@@ -34,6 +35,7 @@ app.use(`${config.apiPrefix}/admin/orders`,  adminOrderRouter);
 app.use(`${config.apiPrefix}/account`,       accountRouter);
 app.use(`${config.apiPrefix}/coupons`,       couponRouter);
 app.use(`${config.apiPrefix}/admin/customers`, adminCustomerRouter);
+app.use(`${config.apiPrefix}/auth`,          authRouter);
 
 app.get('/health', (req, res) => {
   res.json({
